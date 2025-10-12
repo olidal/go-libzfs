@@ -406,24 +406,24 @@ func zpoolTestInitialization(t *testing.T) {
 /* ------------------------------------------------------------------------- */
 // EXAMPLES:
 
-func ExamplePoolProp() {
-	if pool, err := zfs.PoolOpen("SSD"); err == nil {
-		print("Pool size is: ", pool.Properties[zfs.PoolPropSize].Value)
-		// Turn on snapshot listing for pool
-		pool.SetProperty(zfs.PoolPropListsnaps, "on")
-		println("Changed property",
-			zfs.PoolPropertyToName(zfs.PoolPropListsnaps), "to value:",
-			pool.Properties[zfs.PoolPropListsnaps].Value)
+// func ExamplePoolProp() {
+// 	if pool, err := zfs.PoolOpen("SSD"); err == nil {
+// 		print("Pool size is: ", pool.Properties[zfs.PoolPropSize].Value)
+// 		// Turn on snapshot listing for pool
+// 		pool.SetProperty(zfs.PoolPropListsnaps, "on")
+// 		println("Changed property",
+// 			zfs.PoolPropertyToName(zfs.PoolPropListsnaps), "to value:",
+// 			pool.Properties[zfs.PoolPropListsnaps].Value)
 
-		prop, err := pool.GetProperty(zfs.PoolPropHealth)
-		if err != nil {
-			panic(err)
-		}
-		println("Update and print out pool health:", prop.Value)
-	} else {
-		print("Error: ", err)
-	}
-}
+// 		prop, err := pool.GetProperty(zfs.PoolPropHealth)
+// 		if err != nil {
+// 			panic(err)
+// 		}
+// 		println("Update and print out pool health:", prop.Value)
+// 	} else {
+// 		print("Error: ", err)
+// 	}
+// }
 
 // Open and list all pools on system with them properties
 func ExamplePoolOpenAll() {

@@ -3,6 +3,7 @@ package zfs
 // #cgo CFLAGS: -D__USE_LARGEFILE64=1
 // #include <stdlib.h>
 // #include <libzfs.h>
+// #include <libzutil.h>
 // #include "common.h"
 // #include "zpool.h"
 // #include "zfs.h"
@@ -100,12 +101,23 @@ type PoolScanStat struct {
 	EndTime   uint64 // Scan end time
 	ToExamine uint64 // Total bytes to scan
 	Examined  uint64 // Total bytes scaned
-	ToProcess uint64 // Total bytes to processed
+	Skipped   uint64 // Total bytes to processed
 	Processed uint64 // Total bytes processed
 	Errors    uint64 // Scan errors
 	// Values not stored on disk
-	PassExam  uint64 // Examined bytes per scan pass
-	PassStart uint64 // Start time of scan pass
+	PassExam               uint64 // Examined bytes per scan pass
+	PassStart              uint64 // Start time of scan pass
+	PassScrubPause         uint64 // Start time of scan pass
+	PassScrubSpentPaused   uint64 // Start time of scan pass
+	PassIssued             uint64 // Start time of scan pass
+	Issued                 uint64 // Start time of scan pass
+	ErrorScrubFunc         uint64 // Start time of scan pass
+	ErrorScrubState        uint64 // Start time of scan pass
+	ErrorScrubStart        uint64 // Start time of scan pass
+	ErrorScrubEnd          uint64 // Start time of scan pass
+	ErrorScrubExamined     uint64 // Start time of scan pass
+	ErrorScrubToBeExamined uint64 // Start time of scan pass
+	PassErrorScrubPause    uint64 // Start time of scan pass
 }
 
 // VDevTree ZFS virtual device tree
@@ -214,11 +226,22 @@ func poolGetConfig(name string, nv C.nvlist_ptr) (vdevs VDevTree, err error) {
 		vdevs.ScanStat.EndTime = uint64(ps.pss_end_time)
 		vdevs.ScanStat.ToExamine = uint64(ps.pss_to_examine)
 		vdevs.ScanStat.Examined = uint64(ps.pss_examined)
-		vdevs.ScanStat.ToProcess = uint64(ps.pss_to_process)
+		vdevs.ScanStat.Skipped = uint64(ps.pss_skipped)
 		vdevs.ScanStat.Processed = uint64(ps.pss_processed)
 		vdevs.ScanStat.Errors = uint64(ps.pss_errors)
 		vdevs.ScanStat.PassExam = uint64(ps.pss_pass_exam)
 		vdevs.ScanStat.PassStart = uint64(ps.pss_pass_start)
+		vdevs.ScanStat.PassScrubPause = uint64(ps.pss_pass_scrub_pause)
+		vdevs.ScanStat.PassScrubSpentPaused = uint64(ps.pss_pass_scrub_spent_paused)
+		vdevs.ScanStat.PassIssued = uint64(ps.pss_pass_issued)
+		vdevs.ScanStat.Issued = uint64(ps.pss_issued)
+		vdevs.ScanStat.ErrorScrubFunc = uint64(ps.pss_error_scrub_func)
+		vdevs.ScanStat.ErrorScrubState = uint64(ps.pss_error_scrub_state)
+		vdevs.ScanStat.ErrorScrubStart = uint64(ps.pss_error_scrub_start)
+		vdevs.ScanStat.ErrorScrubEnd = uint64(ps.pss_error_scrub_end)
+		vdevs.ScanStat.ErrorScrubExamined = uint64(ps.pss_error_scrub_examined)
+		vdevs.ScanStat.ErrorScrubToBeExamined = uint64(ps.pss_error_scrub_to_be_examined)
+		vdevs.ScanStat.PassErrorScrubPause = uint64(ps.pss_pass_error_scrub_pause)
 	}
 
 	// Fetch the children
@@ -321,7 +344,11 @@ func PoolImportSearch(searchpaths []string) (epools []ExportedPool, err error) {
 		C.strings_setat(cpaths, C.int(i), csPath)
 	}
 
-	pools := C.go_zpool_search_import(C.libzfsHandle, C.int(numofp), cpaths, C.B_FALSE)
+	var lpch C.libpc_handle_t
+	C.go_libpc_init(&lpch)
+
+	pools := C.go_zpool_search_import(&lpch, C.int(numofp), cpaths, C.B_FALSE)
+	//pools := C.go_zpool_search_import(C.struct_libpc_handle, C.int(numofp), cpaths, C.B_FALSE)
 	defer C.nvlist_free(pools)
 	elem = C.nvlist_next_nvpair(pools, elem)
 	epools = make([]ExportedPool, 0, 1)
@@ -378,7 +405,9 @@ func poolSearchImport(q string, searchpaths []string, guid bool) (name string,
 		C.strings_setat(cpaths, C.int(i), csPath)
 	}
 
-	pools := C.go_zpool_search_import(C.libzfsHandle, C.int(numofp), cpaths, C.B_FALSE)
+	var lpch C.libpc_handle_t
+	C.go_libpc_init(&lpch)
+	pools := C.go_zpool_search_import(&lpch, C.int(numofp), cpaths, C.B_FALSE)
 	defer C.nvlist_free(pools)
 
 	elem = C.nvlist_next_nvpair(pools, elem)

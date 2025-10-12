@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/fs/zfs.h>
+#include <libzutil.h>
 
 #include "common.h"
 #include "zpool.h"

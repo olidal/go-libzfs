@@ -3,7 +3,7 @@
  */
 
 #include <libzfs.h>
-#include <libzfs/sys/zfs_context.h>
+#include <sys/zfs_context.h>
 #include <libzutil.h>
 #include <thread_pool.h>
 
@@ -371,7 +371,7 @@ int refresh_stats(zpool_list_t *pool)
 
 const char *get_vdev_type(nvlist_ptr nv) {
 	char *value = NULL;
-	int r = nvlist_lookup_string(nv, ZPOOL_CONFIG_TYPE, &value);
+	int r = nvlist_lookup_string(nv, ZPOOL_CONFIG_TYPE, (const char **)&value);
 	if(r != 0) {
 		return NULL;
 	}
@@ -445,7 +445,7 @@ const char *get_vdev_path(nvlist_ptr nv) {
 	uint64_t notpresent = 0;
 	int r = nvlist_lookup_uint64(nv, ZPOOL_CONFIG_NOT_PRESENT, &notpresent);
 	if (r == 0 || notpresent != 0) {
-		if (  0 != nvlist_lookup_string(nv, ZPOOL_CONFIG_PATH, &path) ) {
+		if (  0 != nvlist_lookup_string(nv, ZPOOL_CONFIG_PATH, (const char **)&path) ) {
 			return NULL;
 		}
 	}
@@ -474,7 +474,7 @@ uint64_t get_zpool_guid(nvlist_ptr nv) {
 
 const char *get_zpool_name(nvlist_ptr nv) {
 	char *name = NULL;
-	if (0 != nvlist_lookup_string(nv, ZPOOL_CONFIG_POOL_NAME, &name)) {
+	if (0 != nvlist_lookup_string(nv, ZPOOL_CONFIG_POOL_NAME, (const char **)&name)) {
 		return NULL;
 	}
 	return name;
@@ -482,7 +482,7 @@ const char *get_zpool_name(nvlist_ptr nv) {
 
 const char *get_zpool_comment(nvlist_ptr nv) {
 	char *comment = NULL;
-	if (0 != nvlist_lookup_string(nv, ZPOOL_CONFIG_COMMENT, &comment)) {
+	if (0 != nvlist_lookup_string(nv, ZPOOL_CONFIG_COMMENT, (const char **)&comment)) {
 		return NULL;
 	}
 	return comment;
@@ -497,7 +497,8 @@ nvlist_ptr get_zpool_vdev_tree(nvlist_ptr nv) {
 }
 
 
-nvlist_ptr go_zpool_search_import(libzfs_handle_ptr zfsh, int paths, char **path, boolean_t do_scan) {
+//nvlist_ptr go_zpool_search_import(libzfs_handle_ptr zfsh, int paths, char **path, boolean_t do_scan) {
+nvlist_ptr go_zpool_search_import(libpc_handle_t *zfsh, int paths, char **path, boolean_t do_scan) {
 	importargs_t idata;
 	memset(&idata, 0, sizeof(importargs_t));
 	nvlist_ptr pools = NULL;
@@ -510,7 +511,7 @@ nvlist_ptr go_zpool_search_import(libzfs_handle_ptr zfsh, int paths, char **path
 	if (t == NULL)
 			return NULL;
 
-	pools = zpool_search_import(zfsh, &idata, &libzfs_config_ops);
+	pools = zpool_search_import(zfsh, &idata);
 
 	tpool_wait(t);
 	tpool_destroy(t);

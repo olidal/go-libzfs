@@ -1,4 +1,5 @@
 #include <libzfs.h>
+#include <libzutil.h>
 #include <memory.h>
 #include <string.h>
 #include <stdio.h>
@@ -9,6 +10,13 @@ libzfs_handle_ptr libzfsHandle;
 
 int go_libzfs_init() {
 	libzfsHandle = libzfs_init();
+	return 0;
+}
+
+int go_libpc_init(libpc_handle_t *lpch) {
+	lpch->lpc_lib_handle = libzfsHandle;
+	lpch->lpc_ops = &libzfs_config_ops;
+	lpch->lpc_printerr = B_TRUE;
 	return 0;
 }
 

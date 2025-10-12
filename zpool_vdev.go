@@ -2,6 +2,7 @@ package zfs
 
 // #include <stdlib.h>
 // #include <libzfs.h>
+// #include <libzutil.h>
 // #include "common.h"
 // #include "zpool.h"
 // #include "zfs.h"

@@ -102,6 +102,10 @@ typedef struct zfs_cmd {
 typedef struct dataset_list dataset_list_t;
 typedef struct dataset_list* dataset_list_ptr;
 
+sendflags_t *alloc_sendflags();
+recvflags_t *alloc_recvflags();
+
+
 
 dataset_list_t *create_dataset_list_item();
 void dataset_list_close(dataset_list_t *list);
@@ -122,7 +126,7 @@ int dataset_clone(dataset_list_ptr dataset, const char *target, nvlist_ptr props
 int dataset_snapshot(const char *path, boolean_t recur, nvlist_ptr props);
 int dataset_rollback(dataset_list_ptr dataset, dataset_list_ptr snapshot, boolean_t force);
 int dataset_promote(dataset_list_ptr dataset);
-int dataset_rename(dataset_list_ptr dataset, const char* new_name, boolean_t recur, boolean_t force_unm);
+int dataset_rename(dataset_list_ptr dataset, const char* new_name, renameflags_t flags);
 const char* dataset_is_mounted(dataset_list_ptr dataset);
 int dataset_mount(dataset_list_ptr dataset, const char *options, int flags);
 int dataset_unmount(dataset_list_ptr dataset, int flags);
@@ -134,10 +138,6 @@ property_list_t *read_user_property(dataset_list_t *dataset, const char* prop);
 
 char** alloc_cstrings(int size);
 void strings_setat(char **a, int at, char *v);
-
-sendflags_t *alloc_sendflags();
-recvflags_t *alloc_recvflags();
-
 
 struct zfs_cmd *new_zfs_cmd();
 int estimate_send_size(struct zfs_cmd *zc);

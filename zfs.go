@@ -1,10 +1,15 @@
 package zfs
 
+// #cgo CFLAGS: -I ../zfs/include -I ../zfs/lib/libspl/include -I ../zfs/lib/libspl/include/os/linux
 // #include <stdlib.h>
 // #include <libzfs.h>
+// #include <libzutil.h>
+// #include <sys/stdtypes.h>
 // #include "common.h"
 // #include "zpool.h"
 // #include "zfs.h"
+// #include <memory.h>
+// #include <string.h>
 import "C"
 
 import (
@@ -508,6 +513,14 @@ func (d *Dataset) Promote() (err error) {
 	return
 }
 
+func bool_to_byte(v bool) byte {
+	if v {
+		return 1
+	} else {
+		return 0
+	}
+}
+
 // Rename dataset
 func (d *Dataset) Rename(newName string, recur,
 	forceUnmount bool) (err error) {
@@ -515,10 +528,15 @@ func (d *Dataset) Rename(newName string, recur,
 		err = errors.New(msgDatasetIsNil)
 		return
 	}
+
+	// struct rename_flags is an unsigned int bit
+	// seen as a quad byte bit field (no boolean_t !)
+	rFlags := C.struct_renameflags{[4]byte{bool_to_byte(recur), 0, bool_to_byte(forceUnmount), 0}}
+
 	csNewName := C.CString(newName)
 	defer C.free(unsafe.Pointer(csNewName))
 	if errc := C.dataset_rename(d.list, csNewName,
-		booleanT(recur), booleanT(forceUnmount)); errc != 0 {
+		rFlags); errc != 0 {
 		err = LastError()
 		return
 	}
@@ -619,7 +637,8 @@ func (d *Dataset) Hold(flag string) (err error) {
 
 // Release - Removes a single reference, named with the tag argument, from the specified snapshot.
 // The tag must already exist for each snapshot.  If a hold exists on a snapshot, attempts to destroy
-//  that snapshot by using the zfs destroy command return EBUSY.
+//
+//	that snapshot by using the zfs destroy command return EBUSY.
 func (d *Dataset) Release(flag string) (err error) {
 	var path string
 	var pd Dataset

@@ -2,6 +2,7 @@ package zfs
 
 // #include <stdlib.h>
 // #include <libzfs.h>
+// #include <libzutil.h>
 // #include "common.h"
 // #include "zpool.h"
 // #include "zfs.h"
@@ -73,13 +74,20 @@ func to_boolean_t(a bool) C.boolean_t {
 	return 0
 }
 
+func bool_to_int_t(a bool) C.int {
+	if a {
+		return 1
+	}
+	return 0
+}
+
 func to_sendflags_t(flags *SendFlags) (cflags *C.sendflags_t) {
 	cflags = C.alloc_sendflags()
-	cflags.verbose = to_boolean_t(flags.Verbose)
+	cflags.verbosity = bool_to_int_t(flags.Verbose)
 	cflags.replicate = to_boolean_t(flags.Replicate)
 	cflags.doall = to_boolean_t(flags.DoAll)
 	cflags.fromorigin = to_boolean_t(flags.FromOrigin)
-	cflags.dedup = to_boolean_t(flags.Dedup)
+	//	cflags.dedup = to_boolean_t(flags.Dedup)
 	cflags.props = to_boolean_t(flags.Props)
 	cflags.dryrun = to_boolean_t(flags.DryRun)
 	cflags.parsable = to_boolean_t(flags.Parsable)

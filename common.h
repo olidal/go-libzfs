@@ -18,6 +18,16 @@ typedef struct property_list {
 } property_list_t;
 
 typedef struct libzfs_handle* libzfs_handle_ptr;
+typedef struct libpc_handle* libpc_handle_ptr;
+/*typedef struct libpc_handle {
+	int lpc_error;
+	boolean_t lpc_printerr;
+	boolean_t lpc_open_access_error;
+	boolean_t lpc_desc_active;
+	char lpc_desc[1024];
+	pool_config_ops_t *lpc_ops;
+	void *lpc_lib_handle;
+} libpc_handle_t; */
 typedef struct nvlist* nvlist_ptr;
 typedef struct property_list *property_list_ptr;
 typedef struct nvpair* nvpair_ptr;
@@ -27,6 +37,7 @@ typedef char* char_ptr;
 extern libzfs_handle_ptr libzfsHandle;
 
 int go_libzfs_init();
+int go_libpc_init(libpc_handle_t *);
 
 int libzfs_last_error();
 const char *libzfs_last_error_str();

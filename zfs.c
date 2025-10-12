@@ -6,6 +6,7 @@
 #include <memory.h>
 #include <string.h>
 #include <stdio.h>
+#include <libzutil.h>
 
 #include "common.h"
 #include "zpool.h"
@@ -132,8 +133,12 @@ int dataset_promote(dataset_list_ptr dataset) {
 	return zfs_promote(dataset->zh);
 }
 
-int dataset_rename(dataset_list_ptr dataset, const char* new_name, boolean_t recur, boolean_t force_unm) {
-	return zfs_rename(dataset->zh, new_name, recur, force_unm);
+//int dataset_rename(dataset_list_ptr dataset, const char* new_name, boolean_t recur, boolean_t force_unm) {
+//	return zfs_rename(dataset->zh, new_name, recur, force_unm);
+//}
+
+int dataset_rename(dataset_list_ptr dataset, const char* new_name, renameflags_t flags) {
+	return zfs_rename(dataset->zh, new_name, flags);
 }
 
 const char *dataset_is_mounted(dataset_list_ptr dataset){
@@ -204,9 +209,9 @@ property_list_t *read_user_property(dataset_list_t *dataset, const char* prop) {
 		strval = "-";
 	} else {
 		verify(nvlist_lookup_string(propval,
-			ZPROP_VALUE, &strval) == 0);
+			ZPROP_VALUE, (const char **)&strval) == 0);
 		verify(nvlist_lookup_string(propval,
-			ZPROP_SOURCE, &sourceval) == 0);
+			ZPROP_SOURCE, (const char **)&sourceval) == 0);
 
 		if (strcmp(sourceval,
 			zfs_get_name(dataset->zh)) == 0) {
@@ -243,6 +248,7 @@ sendflags_t *alloc_sendflags() {
 	memset(r, 0, sizeof(sendflags_t));
 	return r;
 }
+
 recvflags_t *alloc_recvflags() {
 	recvflags_t *r = malloc(sizeof(recvflags_t));
 	memset(r, 0, sizeof(recvflags_t));

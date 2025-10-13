@@ -511,7 +511,7 @@ nvlist_ptr go_zpool_search_import(libpc_handle_t *zfsh, int paths, char **path, 
 	if (t == NULL)
 			return NULL;
 
-	pools = zpool_search_import(zfsh, &idata);
+	pools = zpool_search_import(zfsh, &idata, &libzfs_config_ops);
 
 	tpool_wait(t);
 	tpool_destroy(t);

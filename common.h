@@ -19,7 +19,7 @@ typedef struct property_list {
 
 typedef struct libzfs_handle* libzfs_handle_ptr;
 typedef struct libpc_handle* libpc_handle_ptr;
-/*typedef struct libpc_handle {
+typedef struct libpc_handle {
 	int lpc_error;
 	boolean_t lpc_printerr;
 	boolean_t lpc_open_access_error;
@@ -27,7 +27,7 @@ typedef struct libpc_handle* libpc_handle_ptr;
 	char lpc_desc[1024];
 	pool_config_ops_t *lpc_ops;
 	void *lpc_lib_handle;
-} libpc_handle_t; */
+} libpc_handle_t;
 typedef struct nvlist* nvlist_ptr;
 typedef struct property_list *property_list_ptr;
 typedef struct nvpair* nvpair_ptr;

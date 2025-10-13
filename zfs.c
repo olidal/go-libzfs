@@ -209,9 +209,9 @@ property_list_t *read_user_property(dataset_list_t *dataset, const char* prop) {
 		strval = "-";
 	} else {
 		verify(nvlist_lookup_string(propval,
-			ZPROP_VALUE, (const char **)&strval) == 0);
+			ZPROP_VALUE, &strval) == 0);
 		verify(nvlist_lookup_string(propval,
-			ZPROP_SOURCE, (const char **)&sourceval) == 0);
+			ZPROP_SOURCE, &sourceval) == 0);
 
 		if (strcmp(sourceval,
 			zfs_get_name(dataset->zh)) == 0) {

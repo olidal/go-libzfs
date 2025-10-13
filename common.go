@@ -7,17 +7,21 @@
 package zfs
 
 /*
-#cgo CFLAGS: -I /usr/include/libzfs -I /usr/include/libspl -DHAVE_IOCTL_IN_SYS_IOCTL_H -D_GNU_SOURCE
+#cgo CFLAGS: -I ../zfs/include -I /usr/include/libspl -DHAVE_IOCTL_IN_SYS_IOCTL_H -D_GNU_SOURCE
 #cgo LDFLAGS: -L ./libs/current -lzfs -lzfs_core -lzpool -lnvpair -lzutil -lm -lz -luuid -lrt -lblkid -lspl_assert -luutil -lcrypto
 
 #include <stdlib.h>
 #include <libzfs.h>
 #include <libzutil.h>
+#include "libzutil.h"
 #include "common.h"
 #include "zpool.h"
 #include "zfs.h"
 */
 import "C"
+
+//     off.cgo.off CFLAGS: -I /usr/include/libzfs -I /usr/include/libspl -DHAVE_IOCTL_IN_SYS_IOCTL_H -D_GNU_SOURCE
+
 
 import (
 	"errors"

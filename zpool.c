@@ -247,6 +247,16 @@ property_list_t *read_zpool_properties(zpool_list_ptr pool) {
 	root = read_append_zpool_property(pool, root, ZPOOL_PROP_COMMENT);
 	root = read_append_zpool_property(pool, root, ZPOOL_PROP_EXPANDSZ);
 	root = read_append_zpool_property(pool, root, ZPOOL_PROP_FREEING);
+	root = read_append_zpool_property(pool, root, ZPOOL_PROP_FRAGMENTATION);
+	root = read_append_zpool_property(pool, root, ZPOOL_PROP_LEAKED);
+	root = read_append_zpool_property(pool, root, ZPOOL_PROP_MAXBLOCKSIZE);
+	root = read_append_zpool_property(pool, root, ZPOOL_PROP_TNAME);
+	root = read_append_zpool_property(pool, root, ZPOOL_PROP_MAXDNODESIZE);
+	root = read_append_zpool_property(pool, root, ZPOOL_PROP_MULTIHOST);
+	root = read_append_zpool_property(pool, root, ZPOOL_PROP_CHECKPOINT);
+	root = read_append_zpool_property(pool, root, ZPOOL_PROP_LOAD_GUID);
+	root = read_append_zpool_property(pool, root, ZPOOL_PROP_AUTOTRIM);
+	root = read_append_zpool_property(pool, root, ZPOOL_PROP_COMPATIBILITY);
 
 	list = new_property_list();
 	list->property = ZPOOL_NUM_PROPS;
@@ -255,7 +265,7 @@ property_list_t *read_zpool_properties(zpool_list_ptr pool) {
 	zprop_source_tostr(list->source, ZPROP_SRC_NONE);
 	root = list;
 
-	// printf("Finished properties reading.\n");
+	printf("Finished properties reading.\n");
 	return root;
 }
 

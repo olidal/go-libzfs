@@ -7,8 +7,8 @@
 package zfs
 
 /*
-#cgo CFLAGS: -I ../zfs/include -I /usr/include/libspl -DHAVE_IOCTL_IN_SYS_IOCTL_H -D_GNU_SOURCE
-#cgo LDFLAGS: -L ./libs/current -lzfs -lzfs_core -lzpool -lnvpair -lzutil -lm -lz -luuid -lrt -lblkid -lspl_assert -luutil -lcrypto
+#cgo CFLAGS: -I /usr/local/include/libzfs -I /usr/local/include/libspl -DHAVE_IOCTL_IN_SYS_IOCTL_H -D_GNU_SOURCE
+#cgo LDFLAGS: -L /usr/local/lib -lzfs -lzfs_core -lzpool -lnvpair -lm -lz -luuid -lrt -lblkid -luutil -lcrypto
 
 #include <stdlib.h>
 #include <libzfs.h>
@@ -21,7 +21,6 @@ package zfs
 import "C"
 
 //     off.cgo.off CFLAGS: -I /usr/include/libzfs -I /usr/include/libspl -DHAVE_IOCTL_IN_SYS_IOCTL_H -D_GNU_SOURCE
-
 
 import (
 	"errors"
@@ -184,6 +183,7 @@ const (
 	PoolPropCheckpoint
 	PoolPropLoadGuid
 	PoolPropAutotrim
+	PoolPropCompatibility
 	PoolNumProps
 )
 

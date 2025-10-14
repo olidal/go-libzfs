@@ -101,7 +101,7 @@ type PoolScanStat struct {
 	EndTime   uint64 // Scan end time
 	ToExamine uint64 // Total bytes to scan
 	Examined  uint64 // Total bytes scaned
-	Skipped   uint64 // Total bytes to processed
+	ToProcess uint64 // Total bytes to processed
 	Processed uint64 // Total bytes processed
 	Errors    uint64 // Scan errors
 	// Values not stored on disk
@@ -226,23 +226,36 @@ func poolGetConfig(name string, nv C.nvlist_ptr) (vdevs VDevTree, err error) {
 		vdevs.ScanStat.EndTime = uint64(ps.pss_end_time)
 		vdevs.ScanStat.ToExamine = uint64(ps.pss_to_examine)
 		vdevs.ScanStat.Examined = uint64(ps.pss_examined)
-//		vdevs.ScanStat.Skipped = uint64(ps.pss_skipped)
+		vdevs.ScanStat.ToProcess = uint64(ps.pss_to_process)
 		vdevs.ScanStat.Processed = uint64(ps.pss_processed)
 		vdevs.ScanStat.Errors = uint64(ps.pss_errors)
 		vdevs.ScanStat.PassExam = uint64(ps.pss_pass_exam)
 		vdevs.ScanStat.PassStart = uint64(ps.pss_pass_start)
-		vdevs.ScanStat.PassScrubPause = uint64(ps.pss_pass_scrub_pause)
-		vdevs.ScanStat.PassScrubSpentPaused = uint64(ps.pss_pass_scrub_spent_paused)
-		vdevs.ScanStat.PassIssued = uint64(ps.pss_pass_issued)
-		vdevs.ScanStat.Issued = uint64(ps.pss_issued)
-//		vdevs.ScanStat.ErrorScrubFunc = uint64(ps.pss_error_scrub_func)
-//		vdevs.ScanStat.ErrorScrubState = uint64(ps.pss_error_scrub_state)
-//		vdevs.ScanStat.ErrorScrubStart = uint64(ps.pss_error_scrub_start)
-//		vdevs.ScanStat.ErrorScrubEnd = uint64(ps.pss_error_scrub_end)
-//		vdevs.ScanStat.ErrorScrubExamined = uint64(ps.pss_error_scrub_examined)
-//		vdevs.ScanStat.ErrorScrubToBeExamined = uint64(ps.pss_error_scrub_to_be_examined)
-//		vdevs.ScanStat.PassErrorScrubPause = uint64(ps.pss_pass_error_scrub_pause)
 	}
+	/*	if ps = C.get_vdev_scan_stats(nv); ps != nil {
+				vdevs.ScanStat.Func = uint64(ps.pss_func)
+				vdevs.ScanStat.State = uint64(ps.pss_state)
+				vdevs.ScanStat.StartTime = uint64(ps.pss_start_time)
+				vdevs.ScanStat.EndTime = uint64(ps.pss_end_time)
+				vdevs.ScanStat.ToExamine = uint64(ps.pss_to_examine)
+				vdevs.ScanStat.Examined = uint64(ps.pss_examined)
+		//		vdevs.ScanStat.Skipped = uint64(ps.pss_skipped)
+				vdevs.ScanStat.Processed = uint64(ps.pss_processed)
+				vdevs.ScanStat.Errors = uint64(ps.pss_errors)
+				vdevs.ScanStat.PassExam = uint64(ps.pss_pass_exam)
+				vdevs.ScanStat.PassStart = uint64(ps.pss_pass_start)
+				vdevs.ScanStat.PassScrubPause = uint64(ps.pss_pass_scrub_pause)
+				vdevs.ScanStat.PassScrubSpentPaused = uint64(ps.pss_pass_scrub_spent_paused)
+				vdevs.ScanStat.PassIssued = uint64(ps.pss_pass_issued)
+				vdevs.ScanStat.Issued = uint64(ps.pss_issued)
+		//		vdevs.ScanStat.ErrorScrubFunc = uint64(ps.pss_error_scrub_func)
+		//		vdevs.ScanStat.ErrorScrubState = uint64(ps.pss_error_scrub_state)
+		//		vdevs.ScanStat.ErrorScrubStart = uint64(ps.pss_error_scrub_start)
+		//		vdevs.ScanStat.ErrorScrubEnd = uint64(ps.pss_error_scrub_end)
+		//		vdevs.ScanStat.ErrorScrubExamined = uint64(ps.pss_error_scrub_examined)
+		//		vdevs.ScanStat.ErrorScrubToBeExamined = uint64(ps.pss_error_scrub_to_be_examined)
+		//		vdevs.ScanStat.PassErrorScrubPause = uint64(ps.pss_pass_error_scrub_pause)
+			} */
 
 	// Fetch the children
 	children = C.get_vdev_children(nv)
@@ -557,6 +570,9 @@ func (pool *Pool) ReloadProperties() (err error) {
 	pool.Properties = make([]Property, PoolNumProps+1)
 	next := propList
 	for next != nil {
+		//fmt.Printf("Next value: %v, Next Source: %v, Next Property%v, size=%v\n",
+		//	next.value[0], next.source[0], next.property, len(pool.Properties))
+
 		pool.Properties[next.property] = Property{Value: C.GoString(&(next.value[0])), Source: C.GoString(&(next.source[0]))}
 		next = C.next_property(next)
 	}
@@ -930,7 +946,7 @@ func PoolCreate(name string, vdev VDevTree, features map[string]string,
 	// create root vdev nvroot
 	var nvroot *C.struct_nvlist
 	if r := C.nvlist_alloc(&nvroot, C.NV_UNIQUE_NAME, 0); r != 0 {
-		err = errors.New("Failed to allocate root vdev")
+		err = errors.New("failed to allocate root vdev")
 		return
 	}
 	csTypeRoot := C.CString(string(VDevTypeRoot))
@@ -938,7 +954,7 @@ func PoolCreate(name string, vdev VDevTree, features map[string]string,
 		csTypeRoot)
 	C.free(unsafe.Pointer(csTypeRoot))
 	if r != 0 {
-		err = errors.New("Failed to allocate root vdev")
+		err = errors.New("failed to allocate root vdev")
 		return
 	}
 	defer C.nvlist_free(nvroot)
@@ -971,14 +987,14 @@ func PoolCreate(name string, vdev VDevTree, features map[string]string,
 	if cprops != nil {
 		defer C.nvlist_free(cprops)
 	} else if len(props) > 0 {
-		err = errors.New("Failed to allocate pool properties")
+		err = errors.New("failed to allocate pool properties")
 		return
 	}
 	cfsprops := toCDatasetProperties(fsprops)
 	if cfsprops != nil {
 		defer C.nvlist_free(cfsprops)
 	} else if len(fsprops) > 0 {
-		err = errors.New("Failed to allocate FS properties")
+		err = errors.New("failed to allocate FS properties")
 		return
 	}
 	for fname, fval := range features {

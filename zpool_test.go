@@ -89,6 +89,7 @@ func zpoolTestPoolCreate(t *testing.T) {
 		return
 	}
 
+	//println("DISKS...")
 	disks := [2]string{s1path, s2path}
 
 	var vdev zfs.VDevTree
@@ -105,6 +106,7 @@ func zpoolTestPoolCreate(t *testing.T) {
 	vdev.Devices = vdevs
 	vdev.Spares = sdevs
 
+	//println("PROPS....")
 	props := make(map[zfs.Prop]string)
 	fsprops := make(map[zfs.Prop]string)
 	features := make(map[string]string)

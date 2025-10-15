@@ -7,6 +7,12 @@ This golang package is only used and tested on Linux.
 
 - Version tagged as v0.1 is latest used and compatible with ZFS On Linux version 0.6.5.x
 - Version tagged as v0.2 is latest used and compatible with ZFS On Linux version 0.7.x
+- Kernel specific version branch: `kernel-5.15.x` (kernel used on proxmox 7.4.1)
+  * Adapted to ZoL version 2.1.15
+  * Includes pre-compiled ZFS libs for a given kernel (in `libs/`) to avoid the hassle of 
+    recompiling ZFS
+  * DISCLAIMER: Very little tested, comes with no warranty, and even less support!
+
 
 [![GoDoc](https://godoc.org/github.com/bicomsystems/go-libzfs?status.svg)](https://godoc.org/github.com/bicomsystems/go-libzfs)
 

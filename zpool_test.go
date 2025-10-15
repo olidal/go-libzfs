@@ -142,7 +142,7 @@ func zpoolTestPoolOpenAll(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	println("\tThere is ", len(pools), " ZFS pools.")
+	println("\tThere are ", len(pools), " ZFS pools.")
 	for _, p := range pools {
 		pname, err = p.Name()
 		if err != nil {

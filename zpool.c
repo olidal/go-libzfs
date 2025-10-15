@@ -265,7 +265,6 @@ property_list_t *read_zpool_properties(zpool_list_ptr pool) {
 	zprop_source_tostr(list->source, ZPROP_SRC_NONE);
 	root = list;
 
-	printf("Finished properties reading.\n");
 	return root;
 }
 

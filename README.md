@@ -9,8 +9,20 @@ This golang package is only used and tested on Linux.
 - Version tagged as v0.2 is latest used and compatible with ZFS On Linux version 0.7.x
 - Kernel specific version branch: `kernel-5.15.x` (kernel used on proxmox 7.4.1)
   * Adapted to ZoL version 2.1.15
-  * Includes pre-compiled ZFS libs for a given kernel (in `libs/`) to avoid the hassle of 
-    recompiling ZFS
+  * Recompile ZFS using proxmox kernel 5.15:
+    * Ensure kernel is installed. [Easiest is to install proxmox 7.4 on top of Fresh Debian 11](https://pve.proxmox.com/wiki/Install_Proxmox_VE_on_Debian_11_Bullseye)
+    * Install build deps:
+    ```
+    apt install build-essential  libncurses5-dev debmake debhelper  dh-python sphinx-common libcap-dev python-dev-is-python3 autoconf uuid-dev libblkid-dev libssl-dev pve-headers-5.15 libauthen-pam-perl asciidoc-base  bison  dwarves  flex  libdw-dev  libelf-dev  libiberty-dev  libnuma-dev  libslang2-dev  lz4  xmlto  zlib1g-dev
+    ```
+    * Run compile commands in ZFS dir
+    ```
+    cd ZFS
+    bash autogen.sh
+    ./configure
+    make -j 4
+    make install
+    ```
   * DISCLAIMER: Very little tested, comes with no warranty, and even less support!
 
 

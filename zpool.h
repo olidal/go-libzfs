@@ -78,8 +78,8 @@ const char *get_zpool_comment(nvlist_ptr nv);
 
 nvlist_ptr get_zpool_vdev_tree(nvlist_ptr nv);
 
-//nvlist_ptr go_zpool_search_import(libzfs_handle_ptr zfsh, int paths, char **path, boolean_t do_scan);
-nvlist_ptr go_zpool_search_import(libpc_handle_t *zfsh, int paths, char **path, boolean_t do_scan);
+nvlist_ptr go_zpool_search_import(libzfs_handle_ptr zfsh, int paths, char **path, boolean_t do_scan);
+//nvlist_ptr go_zpool_search_import(libpc_handle_t *zfsh, int paths, char **path, boolean_t do_scan);
 
 uint64_t set_zpool_vdev_online(zpool_list_t *pool, const char *path, int flags);
 int set_zpool_vdev_offline(zpool_list_t *pool, const char *path, boolean_t istmp, boolean_t force);

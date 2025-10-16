@@ -360,10 +360,11 @@ func PoolImportSearch(searchpaths []string) (epools []ExportedPool, err error) {
 	var lpch C.libpc_handle_t
 	C.go_libpc_init(&lpch)
 
-	pools := C.go_zpool_search_import(&lpch, C.int(numofp), cpaths, C.B_FALSE)
+	pools := C.go_zpool_search_import(C.libzfsHandle, C.int(numofp), cpaths, C.B_FALSE)
 	//pools := C.go_zpool_search_import(C.struct_libpc_handle, C.int(numofp), cpaths, C.B_FALSE)
 	defer C.nvlist_free(pools)
 	elem = C.nvlist_next_nvpair(pools, elem)
+
 	epools = make([]ExportedPool, 0, 1)
 	for ; elem != nil; elem = C.nvlist_next_nvpair(pools, elem) {
 		ep := ExportedPool{}
@@ -378,10 +379,11 @@ func PoolImportSearch(searchpaths []string) (epools []ExportedPool, err error) {
 		}
 
 		if cname = C.get_zpool_name(config); cname == nil {
-			err = fmt.Errorf("Failed to fetch %s", C.ZPOOL_CONFIG_POOL_NAME)
+			err = fmt.Errorf("failed to fetch %s", C.ZPOOL_CONFIG_POOL_NAME)
 			return
 		}
 		ep.Name = C.GoString(cname)
+		//println("Pool: ", ep.Name)
 
 		ep.GUID = uint64(C.get_zpool_guid(config))
 
@@ -393,7 +395,7 @@ func PoolImportSearch(searchpaths []string) (epools []ExportedPool, err error) {
 		}
 
 		if nvroot = C.get_zpool_vdev_tree(config); nvroot == nil {
-			err = fmt.Errorf("Failed to fetch %s", C.ZPOOL_CONFIG_VDEV_TREE)
+			err = fmt.Errorf("failed to fetch %s", C.ZPOOL_CONFIG_VDEV_TREE)
 			return
 		}
 		ep.VDevs, err = poolGetConfig(ep.Name, nvroot)
@@ -418,9 +420,7 @@ func poolSearchImport(q string, searchpaths []string, guid bool) (name string,
 		C.strings_setat(cpaths, C.int(i), csPath)
 	}
 
-	var lpch C.libpc_handle_t
-	C.go_libpc_init(&lpch)
-	pools := C.go_zpool_search_import(&lpch, C.int(numofp), cpaths, C.B_FALSE)
+	pools := C.go_zpool_search_import(C.libzfsHandle, C.int(numofp), cpaths, C.B_FALSE)
 	defer C.nvlist_free(pools)
 
 	elem = C.nvlist_next_nvpair(pools, elem)

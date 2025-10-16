@@ -507,23 +507,31 @@ nvlist_ptr get_zpool_vdev_tree(nvlist_ptr nv) {
 
 
 //nvlist_ptr go_zpool_search_import(libzfs_handle_ptr zfsh, int paths, char **path, boolean_t do_scan) {
-nvlist_ptr go_zpool_search_import(libpc_handle_t *zfsh, int paths, char **path, boolean_t do_scan) {
+nvlist_ptr go_zpool_search_import(libzfs_handle_ptr zfsh, int paths, char **path, boolean_t do_scan) {
 	importargs_t idata;
 	memset(&idata, 0, sizeof(importargs_t));
 	nvlist_ptr pools = NULL;
+	nvlist_ptr policy = NULL;
+	nvlist_ptr props = NULL;
 	idata.path = path;
 	idata.paths = paths;
 	// idata.scan = 0;
 
-	tpool_t *t;
+	if (nvlist_alloc(&policy, NV_UNIQUE_NAME, 0) != 0)
+		return NULL;
+	idata.policy = policy;
+
+		tpool_t *t;
 	t = tpool_create(1, 5 * sysconf(_SC_NPROCESSORS_ONLN), 0, NULL);
-	if (t == NULL)
-			return NULL;
+	if (t == NULL) {
+		nvlist_free(policy);
+		return NULL;
 
+	}
 	pools = zpool_search_import(zfsh, &idata, &libzfs_config_ops);
-
 	tpool_wait(t);
 	tpool_destroy(t);
+	nvlist_free(policy);
 	return pools;
 }
 

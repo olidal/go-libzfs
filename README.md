@@ -23,6 +23,12 @@ This golang package is only used and tested on Linux.
     make -j 4
     make install
     ```
+  * IMPORTANT before testing: Remember to set `LD_LIBRARY_PATH` so you use the freshly compiled zfslib
+    and not the system one:
+    ```
+    export LD_LIBRARY_PATH=/usr/local/lib
+    go test
+    ```
   * DISCLAIMER: Very little tested, comes with no warranty, and even less support!
 
 

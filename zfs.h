@@ -10,6 +10,7 @@ struct dataset_list {
 	void *pnext;
 };
 
+#ifndef _SYS_ZFS_IOCTL_H
 typedef struct zfs_share {
 	uint64_t	z_exportdata;
 	uint64_t	z_sharedata;
@@ -48,6 +49,9 @@ typedef struct zinject_record {
 	uint32_t	zi_pad;
 } zinject_record_t;
 
+//#endif
+
+//#ifndef _SYS_DMU_H
 typedef struct dmu_objset_stats {
 	uint64_t dds_num_clones; /* number of clones of this */
 	uint64_t dds_creation_txg;
@@ -98,6 +102,7 @@ typedef struct zfs_cmd {
 	uint64_t	zc_createtxg;
 	zfs_stat_t	zc_stat;
 } zfs_cmd_t;
+#endif
 
 typedef struct dataset_list dataset_list_t;
 typedef struct dataset_list* dataset_list_ptr;
@@ -134,7 +139,12 @@ int dataset_unmountall(dataset_list_ptr dataset, int flags);
 const char *dataset_get_name(dataset_list_ptr ds);
 
 property_list_t *read_dataset_property(dataset_list_t *dataset, int prop);
+property_list_t *read_dataset_property_fmt(dataset_list_t *dataset, int prop, int literal);
 property_list_t *read_user_property(dataset_list_t *dataset, const char* prop);
+
+const char *go_zfs_prop_column_name(int prop);
+int         go_zfs_prop_align_right(int prop);
+int         go_zfs_name_to_prop(const char *name);
 
 char** alloc_cstrings(int size);
 void strings_setat(char **a, int at, char *v);

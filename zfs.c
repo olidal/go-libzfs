@@ -191,6 +191,44 @@ property_list_t *read_dataset_property(dataset_list_t *dataset, int prop) {
 	return list;
 }
 
+/* Read a property with zfs_prop_get's literal flag configurable.
+ * literal=1 returns raw values ("1073741824"); literal=0 returns humanized
+ * values ("1G") identical to what `zfs list` prints. */
+property_list_t *read_dataset_property_fmt(dataset_list_t *dataset, int prop, int literal) {
+	int r = 0;
+	zprop_source_t source;
+	char statbuf[INT_MAX_VALUE];
+	property_list_ptr list = new_property_list();
+
+	r = zfs_prop_get(dataset->zh, prop,
+		list->value, INT_MAX_VALUE, &source, statbuf, INT_MAX_VALUE, literal);
+	if (r == 0 && list != NULL) {
+		zprop_source_tostr(list->source, source);
+		list->property = (int)prop;
+	} else if (list != NULL) {
+		free_properties(list);
+		list = NULL;
+	}
+	return list;
+}
+
+/* Return zfs_prop_column_name for a property (e.g. AVAIL, REFER, MOUNTPOINT).
+ * Returns NULL for invalid property. */
+const char *go_zfs_prop_column_name(int prop) {
+	return zfs_prop_column_name((zfs_prop_t)prop);
+}
+
+/* Return 1 if property is right-aligned in zfs list output (numeric), else 0. */
+int go_zfs_prop_align_right(int prop) {
+	return zfs_prop_align_right((zfs_prop_t)prop) ? 1 : 0;
+}
+
+/* Resolve a property name string to its zfs_prop_t enum value.
+ * Returns -1 (ZPROP_INVAL) for unknown names or user-defined props. */
+int go_zfs_name_to_prop(const char *name) {
+	return (int)zfs_name_to_prop(name);
+}
+
 // int read_user_property(zfs_handle_t *zh, property_list_t *list, const char *prop) {
 property_list_t *read_user_property(dataset_list_t *dataset, const char* prop) {
 	nvlist_t *user_props = zfs_get_user_props(dataset->zh);

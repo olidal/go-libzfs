@@ -33,11 +33,15 @@ func Test(t *testing.T) {
 	zfsTestDatasetOpenAll(t)
 	zfsTestDatasetSetProperty(t)
 	zfsTestDatasetHoldRelease(t)
+	zfsTestDatasetAllowUnallow(t)
 
 	zfsTestDoubleFreeOnDestroy(t)
 	zfsTestDatasetDestroy(t)
 
+	runLibzfsSourceTests(t)
+
 	zpoolTestPoolDestroy(t)
+
 
 	cleanupVDisks()
 }

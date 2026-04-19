@@ -2,9 +2,10 @@ package zfs_test
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
-	zfs "github.com/bicomsystems/go-libzfs"
+	zfs "github.com/olidal/go-libzfs"
 )
 
 /* ------------------------------------------------------------------------- */
@@ -188,6 +189,76 @@ func zfsTestDatasetHoldRelease(t *testing.T) {
 	print("PASS\n\n")
 }
 
+func zfsTestDatasetAllowUnallow(t *testing.T) {
+	println("TEST Allow/GetAllow/Unallow(", TSTDatasetPath, ") ... ")
+	d, err := zfs.DatasetOpen(TSTDatasetPath)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer d.Close()
+
+	// Use "nobody" — a system user present on virtually all Linux distros.
+	// If it's missing, skip rather than fail (environment issue, not binding bug).
+	if _, err := os.Stat("/etc/passwd"); err != nil {
+		t.Skip("cannot verify nobody user exists")
+		return
+	}
+
+	perms := []string{"send", "snapshot", "hold"}
+	err = d.Allow("nobody", perms, zfs.DelegLocalDescendent)
+	if err != nil {
+		t.Errorf("Allow: %v", err)
+		return
+	}
+
+	entries, err := d.GetAllow()
+	if err != nil {
+		t.Errorf("GetAllow: %v", err)
+		return
+	}
+
+	var foundLocal, foundDesc bool
+	for _, e := range entries {
+		if e.User != "nobody" {
+			continue
+		}
+		if len(e.Perms) != len(perms) {
+			t.Errorf("perm count: got %d, want %d (perms=%v)", len(e.Perms), len(perms), e.Perms)
+		}
+		if e.Locality&zfs.DelegLocal != 0 {
+			foundLocal = true
+		}
+		if e.Locality&zfs.DelegDescendent != 0 {
+			foundDesc = true
+		}
+	}
+	if !foundLocal {
+		t.Error("nobody: local grant not found in GetAllow output")
+	}
+	if !foundDesc {
+		t.Error("nobody: descendent grant not found in GetAllow output")
+	}
+
+	// Revoke and verify empty.
+	err = d.Unallow("nobody", perms, zfs.DelegLocalDescendent)
+	if err != nil {
+		t.Errorf("Unallow: %v", err)
+		return
+	}
+	entries, err = d.GetAllow()
+	if err != nil {
+		t.Errorf("GetAllow after Unallow: %v", err)
+		return
+	}
+	for _, e := range entries {
+		if e.User == "nobody" {
+			t.Errorf("nobody still present after Unallow: %+v", e)
+		}
+	}
+	print("PASS\n\n")
+}
+
 func zfsTestSendSize(t *testing.T) {
 	var size int64
 	println("TEST SendSize(", TSTDatasetPathSnap, ") ... ")
@@ -207,6 +278,7 @@ func zfsTestSendSize(t *testing.T) {
 	}
 	print("PASS\n\n")
 }
+
 
 func zfsTestResumeTokenUnpack(t *testing.T) {
 	var resToken zfs.ResumeToken
@@ -370,3 +442,4 @@ func zfsTestDoubleFreeOnDestroy(t *testing.T) {
 	}
 	print("PASS\n\n")
 }
+

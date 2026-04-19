@@ -7,7 +7,7 @@
 package zfs
 
 /*
-#cgo CFLAGS: -I /usr/local/include/libzfs -DHAVE_IOCTL_IN_SYS_IOCTL_H -D_GNU_SOURCE
+#cgo CFLAGS: -I /usr/local/include/libzfs -I /usr/include/libzfs -I /usr/include/libspl -DHAVE_IOCTL_IN_SYS_IOCTL_H -D_GNU_SOURCE
 #cgo LDFLAGS: -L /usr/local/lib -lzfs -lzfs_core -lzpool -lnvpair -lm -lz -luuid -lrt -lblkid -luutil -lcrypto
 
 #include <stdlib.h>
@@ -294,6 +294,14 @@ const (
 // LastError get last underlying libzfs error description if any
 func LastError() (err error) {
 	return errors.New(C.GoString(C.libzfs_last_error_str()))
+}
+
+// LastErrorAction returns libzfs's action string associated with the last
+// error (e.g. "cannot destroy 'pool/foo'"). Combined with LastError's text
+// it reproduces byte-for-byte what the zfs(8) binary prints to stderr.
+// Returns "" if no action is set.
+func LastErrorAction() string {
+	return C.GoString(C.libzfs_last_error_action_str())
 }
 
 // ClearLastError force clear of any last error set by undeliying libzfs

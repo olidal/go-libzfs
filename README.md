@@ -32,7 +32,7 @@ This golang package is only used and tested on Linux.
   * DISCLAIMER: Very little tested, comes with no warranty, and even less support!
 
 
-[![GoDoc](https://godoc.org/github.com/bicomsystems/go-libzfs?status.svg)](https://godoc.org/github.com/bicomsystems/go-libzfs)
+[![GoDoc](https://godoc.org/github.com/olidal/go-libzfs?status.svg)](https://godoc.org/github.com/olidal/go-libzfs)
 
 ## Main features
 
@@ -53,14 +53,14 @@ This golang package is only used and tested on Linux.
 ## Installing
 
 ```sh
-go get github.com/bicomsystems/go-libzfs
+go get github.com/olidal/go-libzfs
 ```
 
 ## Testing
 
 ```sh
 # On command line shell run
-cd $GOPATH/src/github.com/bicomsystems/go-libzfs
+cd $GOPATH/src/github.com/olidal/go-libzfs
 go test
 ```
 

@@ -67,7 +67,7 @@ type ResumeToken struct {
 	RawOk      bool
 }
 
-func to_boolean_t(a bool) C.boolean_t {
+func ToBoolean(a bool) C.boolean_t {
 	if a {
 		return 1
 	}
@@ -84,34 +84,34 @@ func bool_to_int_t(a bool) C.int {
 func to_sendflags_t(flags *SendFlags) (cflags *C.sendflags_t) {
 	cflags = C.alloc_sendflags()
 	cflags.verbosity = bool_to_int_t(flags.Verbose)
-	cflags.replicate = to_boolean_t(flags.Replicate)
-	cflags.doall = to_boolean_t(flags.DoAll)
-	cflags.fromorigin = to_boolean_t(flags.FromOrigin)
-	//	cflags.dedup = to_boolean_t(flags.Dedup)
-	cflags.props = to_boolean_t(flags.Props)
-	cflags.dryrun = to_boolean_t(flags.DryRun)
-	cflags.parsable = to_boolean_t(flags.Parsable)
-	cflags.progress = to_boolean_t(flags.Progress)
-	cflags.largeblock = to_boolean_t(flags.LargeBlock)
-	cflags.embed_data = to_boolean_t(flags.EmbedData)
-	cflags.compress = to_boolean_t(flags.Compress)
-	cflags.raw = to_boolean_t(flags.Raw)
-	cflags.backup = to_boolean_t(flags.Backup)
-	cflags.holds = to_boolean_t(flags.Holds)
+	cflags.replicate = ToBoolean(flags.Replicate)
+	cflags.doall = ToBoolean(flags.DoAll)
+	cflags.fromorigin = ToBoolean(flags.FromOrigin)
+	//	cflags.dedup = ToBoolean(flags.Dedup)
+	cflags.props = ToBoolean(flags.Props)
+	cflags.dryrun = ToBoolean(flags.DryRun)
+	cflags.parsable = ToBoolean(flags.Parsable)
+	cflags.progress = ToBoolean(flags.Progress)
+	cflags.largeblock = ToBoolean(flags.LargeBlock)
+	cflags.embed_data = ToBoolean(flags.EmbedData)
+	cflags.compress = ToBoolean(flags.Compress)
+	cflags.raw = ToBoolean(flags.Raw)
+	cflags.backup = ToBoolean(flags.Backup)
+	cflags.holds = ToBoolean(flags.Holds)
 	return
 }
 
 func to_recvflags_t(flags *RecvFlags) (cflags *C.recvflags_t) {
 	cflags = C.alloc_recvflags()
-	cflags.verbose = to_boolean_t(flags.Verbose)
-	cflags.isprefix = to_boolean_t(flags.IsPrefix)
-	cflags.istail = to_boolean_t(flags.IsTail)
-	cflags.dryrun = to_boolean_t(flags.DryRun)
-	cflags.force = to_boolean_t(flags.Force)
-	cflags.canmountoff = to_boolean_t(flags.CanmountOff)
-	cflags.resumable = to_boolean_t(flags.Resumable)
-	cflags.byteswap = to_boolean_t(flags.ByteSwap)
-	cflags.nomount = to_boolean_t(flags.NoMount)
+	cflags.verbose = ToBoolean(flags.Verbose)
+	cflags.isprefix = ToBoolean(flags.IsPrefix)
+	cflags.istail = ToBoolean(flags.IsTail)
+	cflags.dryrun = ToBoolean(flags.DryRun)
+	cflags.force = ToBoolean(flags.Force)
+	cflags.canmountoff = ToBoolean(flags.CanmountOff)
+	cflags.resumable = ToBoolean(flags.Resumable)
+	cflags.byteswap = ToBoolean(flags.ByteSwap)
+	cflags.nomount = ToBoolean(flags.NoMount)
 	return
 }
 
@@ -304,6 +304,29 @@ func (d *Dataset) Receive(inf *os.File, flags RecvFlags) (err error) {
 		err = fmt.Errorf("ZFS receive of %s failed. %s", C.GoString(dest), LastError().Error())
 	}
 	return
+}
+
+// ReceiveStreamTo receives a ZFS send stream into destName. Unlike
+// (*Dataset).Receive, the destination doesn't need to exist yet — libzfs
+// creates it if the parent dataset is present.
+func ReceiveStreamTo(destName string, inf *os.File, flags RecvFlags) error {
+	props := C.new_property_nvlist()
+	if props == nil {
+		return fmt.Errorf("out of memory allocating receive props")
+	}
+	defer C.nvlist_free(props)
+
+	cflags := to_recvflags_t(&flags)
+	defer C.free(unsafe.Pointer(cflags))
+
+	dest := C.CString(destName)
+	defer C.free(unsafe.Pointer(dest))
+
+	ec := C.zfs_receive(C.libzfsHandle, dest, nil, cflags, C.int(inf.Fd()), nil)
+	if ec != 0 {
+		return fmt.Errorf("ZFS receive of %s failed: %s", destName, LastError().Error())
+	}
+	return nil
 }
 
 // Unpack unpack resume token

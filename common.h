@@ -41,6 +41,7 @@ int go_libpc_init(libpc_handle_t *);
 
 int libzfs_last_error();
 const char *libzfs_last_error_str();
+const char *libzfs_last_error_action_str();
 int libzfs_clear_last_error();
 
 property_list_t *new_property_list();

@@ -28,6 +28,15 @@ const char *libzfs_last_error_str() {
 	return libzfs_error_description(libzfsHandle);
 }
 
+/* Returns libzfs's action string for the last error — e.g. "cannot destroy
+ * 'pool/foo'". Combined with libzfs_last_error_str() it produces the exact
+ * line that the zfs(8) CLI prints to stderr. Empty string if none is set. */
+const char *libzfs_last_error_action_str() {
+	const char *a = libzfs_error_action(libzfsHandle);
+	if (a == NULL) return "";
+	return a;
+}
+
 int libzfs_clear_last_error() {
 	zfs_standard_error(libzfsHandle, EZFS_SUCCESS, "success");
 	return 0;

@@ -201,6 +201,36 @@ func DatasetOpenSingle(path string) (d Dataset, err error) {
 	return
 }
 
+// DatasetOpenSingleLight opens a dataset without calling
+// ReloadProperties. Dataset.Properties is empty on return —
+// callers must call ReloadProperties themselves if they need
+// the map populated, or use GetPropertyFmt / GetUserProperty
+// (both do their own on-demand read and don't depend on the
+// map).
+//
+// Intended for per-dataset operations where only a handful of
+// specific properties are needed. ReloadProperties fetches ALL
+// known properties (~70 ioctls), which is pure waste when the
+// caller is about to do GetPropertyFmt on 4 of them.
+func DatasetOpenSingleLight(path string) (d Dataset, err error) {
+	csPath := C.CString(path)
+	d.list = C.dataset_open(csPath)
+	C.free(unsafe.Pointer(csPath))
+
+	if d.list == nil || d.list.zh == nil {
+		err = LastError()
+		if err == nil {
+			err = fmt.Errorf("dataset not found")
+		}
+		err = fmt.Errorf("%s - %s", err.Error(), path)
+		return
+	}
+	d.closeOnce = new(sync.Once)
+	d.Type = DatasetType(C.dataset_type(d.list))
+	d.Properties = make(map[Prop]Property)
+	return
+}
+
 func datasetPropertiesTonvlist(props map[Prop]Property) (
 	cprops C.nvlist_ptr, err error) {
 	// convert properties to nvlist C type

@@ -83,6 +83,57 @@ func (d *Dataset) openChildren() (err error) {
 	return
 }
 
+// DatasetOpenRoots opens the pool-root datasets only.
+//
+// Unlike DatasetOpenAll it does not recurse into children — Children
+// is empty on return, and ReloadProperties is not called, leaving
+// Properties empty. Callers drive further descent with OpenChildren
+// on a returned dataset, and fetch property values with
+// GetPropertyFmt/GetUserProperty as needed.
+//
+// Intended for depth-limited walks of the full system: saves
+// O(total-datasets × num-properties) ioctls over DatasetOpenAll.
+func DatasetOpenRoots() (datasets []Dataset, err error) {
+	list := C.dataset_list_root()
+	for list != nil {
+		dataset := Dataset{
+			list:       list,
+			closeOnce:  new(sync.Once),
+			Type:       DatasetType(C.dataset_type(list)),
+			Properties: make(map[Prop]Property),
+		}
+		datasets = append(datasets, dataset)
+		list = C.dataset_next(list)
+	}
+	return
+}
+
+// OpenChildren opens the immediate children of d (one level of
+// descent only) and populates d.Children.
+//
+// Unlike the internal openChildren used by DatasetOpen, this does
+// not recurse into grandchildren and does not eagerly reload each
+// child's Properties. Callers drive further descent with a second
+// OpenChildren call on a child, and fetch property values via
+// GetPropertyFmt/GetUserProperty as needed. Intended for
+// depth-limited walks: cheaper than DatasetOpen by
+// O(subtree-size × num-properties) ioctls.
+func (d *Dataset) OpenChildren() (err error) {
+	d.Children = make([]Dataset, 0, 5)
+	list := C.dataset_list_children(d.list)
+	for list != nil {
+		dataset := Dataset{
+			list:       list,
+			closeOnce:  new(sync.Once),
+			Type:       DatasetType(C.dataset_type(list)),
+			Properties: make(map[Prop]Property),
+		}
+		d.Children = append(d.Children, dataset)
+		list = C.dataset_next(list)
+	}
+	return
+}
+
 // DatasetOpenAll recursive get handles to all available datasets on system
 // (file-systems, volumes or snapshots).
 func DatasetOpenAll() (datasets []Dataset, err error) {

@@ -158,27 +158,20 @@ func (d *Dataset) send(FromName string, outf *os.File, flags *SendFlags) (err er
 	return
 }
 
+// SendResume resumes an interrupted send using a receive resume token.
+// zfs_send_resume takes the libzfs handle + flags + fd + token directly;
+// the dataset receiver is only needed for the snapshot-type sanity check.
+// Earlier versions opened the parent filesystem via the recursive
+// DatasetOpen, which was dead work (zfs_send_resume never uses it) and
+// got expensive when the parent had many descendants.
 func (d *Dataset) SendResume(outf *os.File, flags *SendFlags, receiveResumeToken string) (err error) {
 	if d.Type != DatasetTypeSnapshot {
 		err = fmt.Errorf("Unsupported method on filesystem or bookmark. Use func SendOne() for that purpose.")
 		return
 	}
 
-	var dpath string
-	var pd Dataset
-
 	cflags := to_sendflags_t(flags)
 	defer C.free(unsafe.Pointer(cflags))
-	if dpath, err = d.Path(); err != nil {
-		return
-	}
-	sendparams := strings.Split(dpath, "@")
-	parent := sendparams[0]
-
-	if pd, err = DatasetOpen(parent); err != nil {
-		return
-	}
-	defer pd.Close()
 
 	cReceiveResumeToken := C.CString(receiveResumeToken)
 	defer C.free(unsafe.Pointer(cReceiveResumeToken))

@@ -70,6 +70,14 @@ int property_nvlist_add(nvlist_ptr list, const char *prop, const char *value) {
 	return nvlist_add_string(list, prop, value);
 }
 
+/* property_nvlist_add_exclude encodes a `zfs recv -x <prop>` request.
+ * libzfs_sendrecv.c treats a DATA_TYPE_BOOLEAN nvpair in the recvprops
+ * nvlist as an instruction to strip that property from the incoming
+ * stream, so the value never lands on the destination dataset. */
+int property_nvlist_add_exclude(nvlist_ptr list, const char *prop) {
+	return nvlist_add_boolean(list, prop);
+}
+
 int redirect_libzfs_stdout(int to) {
 	int save, res;
 	save = dup(STDOUT_FILENO);

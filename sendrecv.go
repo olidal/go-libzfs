@@ -303,11 +303,44 @@ func (d *Dataset) Receive(inf *os.File, flags RecvFlags) (err error) {
 // (*Dataset).Receive, the destination doesn't need to exist yet — libzfs
 // creates it if the parent dataset is present.
 func ReceiveStreamTo(destName string, inf *os.File, flags RecvFlags) error {
-	props := C.new_property_nvlist()
-	if props == nil {
-		return fmt.Errorf("out of memory allocating receive props")
+	return ReceiveStreamToWithProps(destName, inf, flags, nil, nil)
+}
+
+// ReceiveStreamToWithProps is like ReceiveStreamTo but also forwards
+// `zfs recv -o key=value` override properties and `zfs recv -x key`
+// exclude properties to libzfs. Both are applied at receive-ioctl time
+// by the kernel, so excluded properties never transiently land on the
+// destination dataset — matching the semantics of the native zfs(8) CLI.
+func ReceiveStreamToWithProps(destName string, inf *os.File, flags RecvFlags,
+	overrides map[string]string, excludes []string) error {
+
+	var props C.nvlist_ptr
+	if len(overrides) > 0 || len(excludes) > 0 {
+		props = C.new_property_nvlist()
+		if props == nil {
+			return fmt.Errorf("out of memory allocating receive props")
+		}
+		defer C.nvlist_free(props)
+
+		for k, v := range overrides {
+			ck := C.CString(k)
+			cv := C.CString(v)
+			rc := C.property_nvlist_add(props, ck, cv)
+			C.free(unsafe.Pointer(ck))
+			C.free(unsafe.Pointer(cv))
+			if rc != 0 {
+				return fmt.Errorf("recv -o %s=%s: nvlist_add_string failed (rc=%d)", k, v, int(rc))
+			}
+		}
+		for _, k := range excludes {
+			ck := C.CString(k)
+			rc := C.property_nvlist_add_exclude(props, ck)
+			C.free(unsafe.Pointer(ck))
+			if rc != 0 {
+				return fmt.Errorf("recv -x %s: nvlist_add_boolean failed (rc=%d)", k, int(rc))
+			}
+		}
 	}
-	defer C.nvlist_free(props)
 
 	cflags := to_recvflags_t(&flags)
 	defer C.free(unsafe.Pointer(cflags))
@@ -315,7 +348,7 @@ func ReceiveStreamTo(destName string, inf *os.File, flags RecvFlags) error {
 	dest := C.CString(destName)
 	defer C.free(unsafe.Pointer(dest))
 
-	ec := C.zfs_receive(C.libzfsHandle, dest, nil, cflags, C.int(inf.Fd()), nil)
+	ec := C.zfs_receive(C.libzfsHandle, dest, props, cflags, C.int(inf.Fd()), nil)
 	if ec != 0 {
 		return fmt.Errorf("ZFS receive of %s failed: %s", destName, LastError().Error())
 	}

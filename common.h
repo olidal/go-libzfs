@@ -49,6 +49,7 @@ void free_properties(property_list_t *root);
 
 nvlist_ptr new_property_nvlist();
 int property_nvlist_add(nvlist_ptr ptr, const char* prop, const char *value);
+int property_nvlist_add_exclude(nvlist_ptr ptr, const char *prop);
 
 int redirect_libzfs_stdout(int to);
 int restore_libzfs_stdout(int saved);

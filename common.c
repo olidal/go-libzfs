@@ -78,6 +78,33 @@ int property_nvlist_add_exclude(nvlist_ptr list, const char *prop) {
 	return nvlist_add_boolean(list, prop);
 }
 
+/* new_libzfs_handle allocates a fresh libzfs handle, distinct from
+ * the package-global libzfsHandle. Daemons that serve concurrent
+ * operations should pair each long-running call (notably zfs_receive)
+ * with its own handle so userspace state — property tables, scratch
+ * nvlist buffers, the zfs_handle_t cache — is per-call rather than
+ * shared across concurrent invocations. Mirrors the per-process
+ * isolation that zfs(8) gets implicitly. */
+libzfs_handle_ptr new_libzfs_handle() {
+	return libzfs_init();
+}
+
+/* free_libzfs_handle releases a handle obtained via new_libzfs_handle.
+ * Safe on NULL. */
+void free_libzfs_handle(libzfs_handle_ptr h) {
+	if (h != NULL) {
+		libzfs_fini(h);
+	}
+}
+
+/* libzfs_handle_error_str returns the error description recorded on
+ * the supplied handle (rather than the global). Required when a
+ * caller-provided handle's last operation failed and the process-wide
+ * libzfsHandle's state isn't relevant. */
+const char *libzfs_handle_error_str(libzfs_handle_ptr h) {
+	return libzfs_error_description(h);
+}
+
 int redirect_libzfs_stdout(int to) {
 	int save, res;
 	save = dup(STDOUT_FILENO);

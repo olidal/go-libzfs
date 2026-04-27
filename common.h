@@ -51,6 +51,10 @@ nvlist_ptr new_property_nvlist();
 int property_nvlist_add(nvlist_ptr ptr, const char* prop, const char *value);
 int property_nvlist_add_exclude(nvlist_ptr ptr, const char *prop);
 
+libzfs_handle_ptr new_libzfs_handle();
+void free_libzfs_handle(libzfs_handle_ptr h);
+const char *libzfs_handle_error_str(libzfs_handle_ptr h);
+
 int redirect_libzfs_stdout(int to);
 int restore_libzfs_stdout(int saved);
 

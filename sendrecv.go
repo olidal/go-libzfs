@@ -10,6 +10,7 @@ package zfs
 // #include <string.h>
 import "C"
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -304,6 +305,101 @@ func (d *Dataset) Receive(inf *os.File, flags RecvFlags) (err error) {
 // creates it if the parent dataset is present.
 func ReceiveStreamTo(destName string, inf *os.File, flags RecvFlags) error {
 	return ReceiveStreamToWithProps(destName, inf, flags, nil, nil)
+}
+
+// LibzfsHandle is an opaque libzfs handle distinct from the package-
+// global one used by most calls. Each handle owns its own /dev/zfs
+// fd, property tables, and scratch nvlist buffers — concurrent
+// operations on different handles cannot race on userspace state.
+//
+// Daemons that serve simultaneous receives (or other long-running
+// libzfs calls) should allocate one handle per in-flight call to
+// match the per-process isolation that the zfs(8) CLI gets implicitly.
+// Always pair with Close() to avoid leaking the kernel-side fd.
+type LibzfsHandle struct {
+	h C.libzfs_handle_ptr
+}
+
+// NewHandle allocates a fresh libzfs handle for caller-scoped use.
+// Returns an error if libzfs_init fails (typically because /dev/zfs
+// is not accessible).
+func NewHandle() (*LibzfsHandle, error) {
+	h := C.new_libzfs_handle()
+	if h == nil {
+		return nil, fmt.Errorf("libzfs_init failed (is /dev/zfs accessible?)")
+	}
+	return &LibzfsHandle{h: h}, nil
+}
+
+// Close releases the handle. Safe on a nil receiver and idempotent.
+func (lh *LibzfsHandle) Close() {
+	if lh == nil || lh.h == nil {
+		return
+	}
+	C.free_libzfs_handle(lh.h)
+	lh.h = nil
+}
+
+// LastError returns the last libzfs error description recorded on
+// this handle (rather than the package-global handle).
+func (lh *LibzfsHandle) LastError() error {
+	if lh == nil || lh.h == nil {
+		return fmt.Errorf("nil libzfs handle")
+	}
+	return errors.New(C.GoString(C.libzfs_handle_error_str(lh.h)))
+}
+
+// ReceiveStreamToWithPropsHandle is identical to ReceiveStreamToWithProps
+// but uses the caller-supplied LibzfsHandle instead of the package
+// global. This isolates each receive's userspace libzfs state, matching
+// the per-process model of zfs(8) and avoiding races between concurrent
+// receives sharing one handle.
+func ReceiveStreamToWithPropsHandle(lh *LibzfsHandle, destName string, inf *os.File, flags RecvFlags,
+	overrides map[string]string, excludes []string) error {
+
+	if lh == nil || lh.h == nil {
+		return fmt.Errorf("nil libzfs handle")
+	}
+
+	var props C.nvlist_ptr
+	if len(overrides) > 0 || len(excludes) > 0 {
+		props = C.new_property_nvlist()
+		if props == nil {
+			return fmt.Errorf("out of memory allocating receive props")
+		}
+		defer C.nvlist_free(props)
+
+		for k, v := range overrides {
+			ck := C.CString(k)
+			cv := C.CString(v)
+			rc := C.property_nvlist_add(props, ck, cv)
+			C.free(unsafe.Pointer(ck))
+			C.free(unsafe.Pointer(cv))
+			if rc != 0 {
+				return fmt.Errorf("recv -o %s=%s: nvlist_add_string failed (rc=%d)", k, v, int(rc))
+			}
+		}
+		for _, k := range excludes {
+			ck := C.CString(k)
+			rc := C.property_nvlist_add_exclude(props, ck)
+			C.free(unsafe.Pointer(ck))
+			if rc != 0 {
+				return fmt.Errorf("recv -x %s: nvlist_add_boolean failed (rc=%d)", k, int(rc))
+			}
+		}
+	}
+
+	cflags := to_recvflags_t(&flags)
+	defer C.free(unsafe.Pointer(cflags))
+
+	dest := C.CString(destName)
+	defer C.free(unsafe.Pointer(dest))
+
+	ec := C.zfs_receive(lh.h, dest, props, cflags, C.int(inf.Fd()), nil)
+	if ec != 0 {
+		return fmt.Errorf("ZFS receive of %s failed: %s", destName, lh.LastError().Error())
+	}
+	return nil
 }
 
 // ReceiveStreamToWithProps is like ReceiveStreamTo but also forwards

@@ -224,6 +224,54 @@ func (d *Dataset) SendFrom(FromName string, outf *os.File, flags SendFlags) (err
 	return
 }
 
+// SendDryRun runs a dry-run send (DryRun=true, Verbose=true,
+// Progress=true forced on; caller controls Parsable) and returns the
+// verbose output captured from libzfs's stdout. With Parsable=false
+// the bytes are the human-readable form `zfs send -nv` prints
+// ("send from @A to ds@B estimated size is 1.52G", "skipping snapshot
+// ...", "total estimated size is 8.82G"). With Parsable=true they
+// match `zfs send -nvP`'s machine format ("incremental\t@A\tds@B\t<n>",
+// "size\t<n>"). The data the regular Send would produce is *not*
+// returned — only the verbose narration. Useful when callers need to
+// surface per-snapshot lines, not just the total (which SendSize
+// extracts via regex).
+func (d *Dataset) SendDryRun(FromName string, flags SendFlags) (output []byte, err error) {
+	var r, w *os.File
+	errch := make(chan error)
+	defer func() {
+		select {
+		case <-errch:
+		default:
+		}
+		close(errch)
+	}()
+	flags.DryRun = true
+	flags.Verbose = true
+	flags.Progress = true
+	if r, w, err = os.Pipe(); err != nil {
+		return
+	}
+	defer r.Close()
+	go func() {
+		var tmpe error
+		saveOut := C.redirect_libzfs_stdout(C.int(w.Fd()))
+		if saveOut < 0 {
+			tmpe = fmt.Errorf("Redirection of zfslib stdout failed %d", saveOut)
+		} else {
+			tmpe = d.send(FromName, w, &flags)
+			C.restore_libzfs_stdout(saveOut)
+		}
+		w.Close()
+		errch <- tmpe
+	}()
+	r.SetReadDeadline(time.Now().Add(60 * time.Second))
+	if output, err = ioutil.ReadAll(r); err != nil {
+		return
+	}
+	err = <-errch
+	return
+}
+
 // SendSize - estimate snapshot size to transfer
 func (d *Dataset) SendSize(FromName string, flags SendFlags) (size int64, err error) {
 	var r, w *os.File

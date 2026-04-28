@@ -295,7 +295,7 @@ func (d *Dataset) Receive(inf *os.File, flags RecvFlags) (err error) {
 	defer C.free(unsafe.Pointer(dest))
 	ec := C.zfs_receive(C.libzfsHandle, dest, nil, cflags, C.int(inf.Fd()), nil)
 	if ec != 0 {
-		err = fmt.Errorf("ZFS receive of %s failed. %s", C.GoString(dest), LastError().Error())
+		err = LastError()
 	}
 	return
 }
@@ -397,7 +397,12 @@ func ReceiveStreamToWithPropsHandle(lh *LibzfsHandle, destName string, inf *os.F
 
 	ec := C.zfs_receive(lh.h, dest, props, cflags, C.int(inf.Fd()), nil)
 	if ec != 0 {
-		return fmt.Errorf("ZFS receive of %s failed: %s", destName, lh.LastError().Error())
+		// Return the bare libzfs error description. libzfs already
+		// formats it like "cannot receive: <details>" matching what
+		// zfs(8) prints; pre-pending "ZFS receive of <ds> failed:"
+		// duplicates the action and dataset name and breaks
+		// replicator tools that grep on the legacy zfs(8) format.
+		return lh.LastError()
 	}
 	return nil
 }
@@ -446,7 +451,7 @@ func ReceiveStreamToWithProps(destName string, inf *os.File, flags RecvFlags,
 
 	ec := C.zfs_receive(C.libzfsHandle, dest, props, cflags, C.int(inf.Fd()), nil)
 	if ec != 0 {
-		return fmt.Errorf("ZFS receive of %s failed: %s", destName, LastError().Error())
+		return LastError()
 	}
 	return nil
 }

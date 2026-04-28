@@ -127,3 +127,31 @@ int restore_libzfs_stdout(int saved) {
 	}
 	close(saved);
 }
+
+/* Same dance for stderr (fd 2). libzfs writes some verbose output to
+ * stderr (e.g. "skipping snapshot ..." during -nv send walks) which
+ * stdout-only redirects miss. Callers redirect both fds to the same
+ * pipe to capture the full narration in emission order. */
+int redirect_libzfs_stderr(int to) {
+	int save, res;
+	save = dup(STDERR_FILENO);
+	if (save < 0) {
+		return save;
+	}
+	res = dup2(to, STDERR_FILENO);
+	if (res < 0) {
+		return res;
+	}
+	return save;
+}
+
+int restore_libzfs_stderr(int saved) {
+	int res;
+	fflush(stderr);
+	res = dup2(saved, STDERR_FILENO);
+	if (res < 0) {
+		return res;
+	}
+	close(saved);
+	return 0;
+}

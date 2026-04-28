@@ -226,15 +226,19 @@ func (d *Dataset) SendFrom(FromName string, outf *os.File, flags SendFlags) (err
 
 // SendDryRun runs a dry-run send (DryRun=true, Verbose=true,
 // Progress=true forced on; caller controls Parsable) and returns the
-// verbose output captured from libzfs's stdout. With Parsable=false
-// the bytes are the human-readable form `zfs send -nv` prints
-// ("send from @A to ds@B estimated size is 1.52G", "skipping snapshot
-// ...", "total estimated size is 8.82G"). With Parsable=true they
-// match `zfs send -nvP`'s machine format ("incremental\t@A\tds@B\t<n>",
-// "size\t<n>"). The data the regular Send would produce is *not*
-// returned — only the verbose narration. Useful when callers need to
-// surface per-snapshot lines, not just the total (which SendSize
-// extracts via regex).
+// verbose output captured from libzfs's stdout AND stderr. With
+// Parsable=false the bytes are the human-readable form `zfs send -nv`
+// prints ("send from @A to ds@B estimated size is 1.52G", "skipping
+// snapshot ...", "total estimated size is 8.82G"). With Parsable=true
+// they match `zfs send -nvP`'s machine format ("incremental\t@A\tds@B
+// \t<n>", "size\t<n>"). Both fds are redirected to the same pipe so
+// emission order is preserved (skipping lines appear before per-snap
+// estimates, matching native zfs(8) behaviour).
+//
+// The data the regular Send would produce is *not* returned — only
+// the verbose narration. Useful when callers need to surface per-
+// snapshot lines, not just the total (which SendSize extracts via
+// regex).
 func (d *Dataset) SendDryRun(FromName string, flags SendFlags) (output []byte, err error) {
 	var r, w *os.File
 	errch := make(chan error)
@@ -258,8 +262,15 @@ func (d *Dataset) SendDryRun(FromName string, flags SendFlags) (output []byte, e
 		if saveOut < 0 {
 			tmpe = fmt.Errorf("Redirection of zfslib stdout failed %d", saveOut)
 		} else {
-			tmpe = d.send(FromName, w, &flags)
-			C.restore_libzfs_stdout(saveOut)
+			saveErr := C.redirect_libzfs_stderr(C.int(w.Fd()))
+			if saveErr < 0 {
+				C.restore_libzfs_stdout(saveOut)
+				tmpe = fmt.Errorf("Redirection of zfslib stderr failed %d", saveErr)
+			} else {
+				tmpe = d.send(FromName, w, &flags)
+				C.restore_libzfs_stderr(saveErr)
+				C.restore_libzfs_stdout(saveOut)
+			}
 		}
 		w.Close()
 		errch <- tmpe

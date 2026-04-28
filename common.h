@@ -57,4 +57,6 @@ const char *libzfs_handle_error_str(libzfs_handle_ptr h);
 
 int redirect_libzfs_stdout(int to);
 int restore_libzfs_stdout(int saved);
+int redirect_libzfs_stderr(int to);
+int restore_libzfs_stderr(int saved);
 

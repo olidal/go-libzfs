@@ -587,3 +587,22 @@ func (rt *ResumeToken) exist(nvl *C.nvlist_t, key string) (val bool) {
 	val = (rc != 0)
 	return
 }
+
+// ReceiveAbort aborts an in-progress resumable receive on `dataset`,
+// removing the hidden `<dataset>/%recv` placeholder and clearing the
+// `receive_resume_token` property. Equivalent to `zfs receive -A
+// <dataset>` in zfs(8).
+//
+// Returns an error if no resumable receive is in progress on the
+// dataset, the dataset doesn't exist, or the caller lacks permission.
+// libzfs's own error message is preserved verbatim via LastError() so
+// gozfs's error formatter can reproduce zfs(8)'s output byte-for-byte.
+func ReceiveAbort(dataset string) error {
+	cdataset := C.CString(dataset)
+	defer C.free(unsafe.Pointer(cdataset))
+	ec := C.zfs_receive_abort_resumable(C.libzfsHandle, cdataset)
+	if ec != 0 {
+		return LastError()
+	}
+	return nil
+}

@@ -7,6 +7,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <libzutil.h>
+#include <signal.h>
+#include <pthread.h>
 
 #include "common.h"
 #include "zpool.h"
@@ -79,7 +81,37 @@ int dataset_iter_children_go(dataset_list_ptr parent, uintptr_t go_handle) {
 	if (parent == NULL || parent->zh == NULL) {
 		return -1;
 	}
-	return zfs_iter_children(parent->zh, go_iter_children_bridge, (void *)go_handle);
+
+	/* Block SIGURG on this thread for the duration of the iter call.
+	 *
+	 * Go's runtime (1.14+) uses SIGURG to preempt long-running
+	 * goroutines, firing it every ~10 ms on threads it manages. The
+	 * cgo-bound thread is not interruptible from Go's scheduler
+	 * point of view (it's blocked in C), but the signal still
+	 * delivers — and the kernel returns EINTR from ioctls in
+	 * progress at the time. libzfs surfaces that as EZFS_INTR
+	 * ("signal received"). The error rate is proportional to call
+	 * duration: per-level OpenChildren spends little time in C and
+	 * almost never sees it; the streaming zfs_iter_children call
+	 * runs for the entire subtree walk and triggers the issue
+	 * essentially every run on a non-trivial pool.
+	 *
+	 * Blocking SIGURG here is safe: this thread's goroutine is
+	 * stuck in cgo and Go can't preempt it anyway. Other goroutines
+	 * on other threads are unaffected (sigmask is thread-local).
+	 * libzfs's own SIGINT/SIGHUP handlers — installed by
+	 * libzfs_init for the user-visible Ctrl-C abort — stay live, so
+	 * a real interrupt still tears the iter down via libzfs's flag.
+	 */
+	sigset_t block_mask, old_mask;
+	sigemptyset(&block_mask);
+	sigaddset(&block_mask, SIGURG);
+	pthread_sigmask(SIG_BLOCK, &block_mask, &old_mask);
+
+	int rc = zfs_iter_children(parent->zh, go_iter_children_bridge, (void *)go_handle);
+
+	pthread_sigmask(SIG_SETMASK, &old_mask, NULL);
+	return rc;
 }
 
 dataset_list_ptr dataset_list_root() {

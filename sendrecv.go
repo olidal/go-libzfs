@@ -8,14 +8,6 @@ package zfs
 // #include "zfs.h"
 // #include <memory.h>
 // #include <string.h>
-//
-// /* zfs_receive_abort_resumable is exported by libzfs.so on every
-//  * supported OpenZFS release (added in 0.8.0) but some distributions
-//  * ship a libzfs.h that omits the prototype. Declaring it here lets
-//  * CGo resolve the symbol regardless of header completeness; if the
-//  * system header already declares it the second declaration is a
-//  * no-op (signatures match). */
-// extern int zfs_receive_abort_resumable(libzfs_handle_t *hdl, const char *);
 import "C"
 import (
 	"errors"
@@ -594,23 +586,4 @@ func (rt *ResumeToken) exist(nvl *C.nvlist_t, key string) (val bool) {
 	rc := C.nvlist_exists(nvl, ckey)
 	val = (rc != 0)
 	return
-}
-
-// ReceiveAbort aborts an in-progress resumable receive on `dataset`,
-// removing the hidden `<dataset>/%recv` placeholder and clearing the
-// `receive_resume_token` property. Equivalent to `zfs receive -A
-// <dataset>` in zfs(8).
-//
-// Returns an error if no resumable receive is in progress on the
-// dataset, the dataset doesn't exist, or the caller lacks permission.
-// libzfs's own error message is preserved verbatim via LastError() so
-// gozfs's error formatter can reproduce zfs(8)'s output byte-for-byte.
-func ReceiveAbort(dataset string) error {
-	cdataset := C.CString(dataset)
-	defer C.free(unsafe.Pointer(cdataset))
-	ec := C.zfs_receive_abort_resumable(C.libzfsHandle, cdataset)
-	if ec != 0 {
-		return LastError()
-	}
-	return nil
 }

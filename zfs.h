@@ -119,6 +119,23 @@ void dataset_list_free(dataset_list_t *list);
 dataset_list_t* dataset_list_root();
 dataset_list_t* dataset_list_children(dataset_list_t *dataset);
 dataset_list_t *dataset_next(dataset_list_t *dataset);
+
+/* Streaming child iterator. Calls zfs_iter_children on `parent` with
+ * a fixed C trampoline that hands each child to the Go-side callback
+ * goDatasetIterChildrenCallback (declared via //export in zfs.go).
+ * The trampoline owns the wrapper's lifecycle: each child's
+ * dataset_list_t is freed (closing the underlying zfs_handle_t)
+ * after the Go callback returns. Memory peak is O(1) — exactly one
+ * child handle alive at any given moment, regardless of total
+ * sibling count. Contrast with dataset_list_children, which
+ * accumulates the full sibling list before returning.
+ *
+ * Returns whatever the trampoline returns: 0 on full iteration,
+ * non-zero to abort early. The Go side conveys its abort signal
+ * (e.g. visit returned an error) by returning non-zero from the
+ * callback, which propagates up through here.
+ */
+int dataset_iter_children_go(dataset_list_ptr parent, uintptr_t go_handle);
 int dataset_type(dataset_list_ptr dataset);
 
 dataset_list_ptr dataset_open(const char *path);

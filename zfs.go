@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"runtime/cgo"
 	"sort"
 	"strings"
 	"sync"
@@ -118,6 +119,11 @@ func DatasetOpenRoots() (datasets []Dataset, err error) {
 // GetPropertyFmt/GetUserProperty as needed. Intended for
 // depth-limited walks: cheaper than DatasetOpen by
 // O(subtree-size × num-properties) ioctls.
+//
+// Memory note: every immediate child is kept alive until d.Close (or
+// the caller's explicit Close on each child) is called. For datasets
+// with many sibling snapshots that's hundreds of MB of zfs_handle_t
+// + property nvlist memory; prefer IterChildren for true streaming.
 func (d *Dataset) OpenChildren() (err error) {
 	d.Children = make([]Dataset, 0, 5)
 	list := C.dataset_list_children(d.list)
@@ -132,6 +138,81 @@ func (d *Dataset) OpenChildren() (err error) {
 		list = C.dataset_next(list)
 	}
 	return
+}
+
+// iterChildrenState carries the visitor closure across the cgo
+// boundary so the C trampoline can find it via cgo.Handle. The
+// callbackErr field captures any non-nil error returned by visit so
+// IterChildren can surface it after libzfs's iter unwinds.
+type iterChildrenState struct {
+	visit       func(*Dataset) error
+	callbackErr error
+}
+
+// IterChildren walks the immediate children of d one at a time,
+// calling visit for each. Memory is bounded to a single open child
+// handle at any given moment regardless of total child count — the
+// streaming counterpart to OpenChildren.
+//
+// The Dataset passed to visit is alive only for the duration of the
+// callback. It MUST NOT be retained: the underlying zfs_handle_t is
+// closed (and the wrapper freed) immediately after the callback
+// returns. The Dataset's Properties map is empty by design (libzfs
+// hands us the handle without ReloadProperties); fetch values via
+// GetPropertyFmt / GetUserProperty as needed.
+//
+// Returning a non-nil error from visit aborts iteration and surfaces
+// the error from IterChildren. Calling .Close() on the visited
+// Dataset is a no-op — IterChildren owns teardown.
+//
+// Intended for walks of huge subtrees (filesystems with thousands of
+// snapshot siblings) where OpenChildren's per-level allocation
+// becomes prohibitive.
+func (d *Dataset) IterChildren(visit func(*Dataset) error) error {
+	if d.list == nil {
+		return errors.New(msgDatasetIsNil)
+	}
+	state := &iterChildrenState{visit: visit}
+	h := cgo.NewHandle(state)
+	defer h.Delete()
+	rc := C.dataset_iter_children_go(d.list, C.uintptr_t(h))
+	if state.callbackErr != nil {
+		return state.callbackErr
+	}
+	if rc != 0 {
+		return LastError()
+	}
+	return nil
+}
+
+// goDatasetIterChildrenCallback is the Go-side endpoint of the C
+// trampoline go_iter_children_bridge. Wraps the freshly-iterated
+// child handle in a transient Dataset, invokes the user's visit
+// callback, and signals any abort via a non-zero return.
+//
+// The closeOnce on the wrapper is pre-tripped so that an accidental
+// Close() inside visit is a safe no-op — the C bridge always owns
+// the handle's teardown immediately after we return.
+//
+//export goDatasetIterChildrenCallback
+func goDatasetIterChildrenCallback(child C.dataset_list_ptr, hID C.uintptr_t) C.int {
+	state, ok := cgo.Handle(hID).Value().(*iterChildrenState)
+	if !ok || state == nil {
+		return -1
+	}
+	once := new(sync.Once)
+	once.Do(func() {}) // pre-trip — Close() inside visit is a no-op
+	ds := Dataset{
+		list:       child,
+		closeOnce:  once,
+		Type:       DatasetType(C.dataset_type(child)),
+		Properties: make(map[Prop]Property),
+	}
+	if err := state.visit(&ds); err != nil {
+		state.callbackErr = err
+		return -1
+	}
+	return 0
 }
 
 // DatasetOpenAll recursive get handles to all available datasets on system

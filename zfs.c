@@ -53,6 +53,35 @@ int dataset_list_callb(zfs_handle_t *dataset, void *data) {
 	return 0;
 }
 
+/* Forward declaration of the Go-exported callback. Defined via
+ * //export goDatasetIterChildrenCallback in zfs.go.
+ */
+extern int goDatasetIterChildrenCallback(dataset_list_ptr child, uintptr_t go_handle);
+
+/* Trampoline from zfs_iter_children → Go. libzfs hands the callback
+ * ownership of `zhp` (caller is responsible for closing it before
+ * returning); we wrap zhp in a fresh dataset_list_t so the Go side
+ * has the same struct shape it gets from dataset_list_children, then
+ * always free it after the Go callback returns. The Go-side Dataset
+ * pre-trips its closeOnce so a stray Close() call inside the visit
+ * function is a safe no-op — we always own teardown here.
+ */
+static int go_iter_children_bridge(zfs_handle_t *zhp, void *data) {
+	uintptr_t go_handle = (uintptr_t)data;
+	dataset_list_t *child = create_dataset_list_item();
+	child->zh = zhp;
+	int rc = goDatasetIterChildrenCallback(child, go_handle);
+	dataset_list_close(child);
+	return rc;
+}
+
+int dataset_iter_children_go(dataset_list_ptr parent, uintptr_t go_handle) {
+	if (parent == NULL || parent->zh == NULL) {
+		return -1;
+	}
+	return zfs_iter_children(parent->zh, go_iter_children_bridge, (void *)go_handle);
+}
+
 dataset_list_ptr dataset_list_root() {
 	int err = 0;
 	dataset_list_t *zlist = create_dataset_list_item();

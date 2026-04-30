@@ -8,6 +8,14 @@ package zfs
 // #include "zfs.h"
 // #include <memory.h>
 // #include <string.h>
+//
+// /* zfs_receive_abort_resumable is exported by libzfs.so on every
+//  * supported OpenZFS release (added in 0.8.0) but some distributions
+//  * ship a libzfs.h that omits the prototype. Declaring it here lets
+//  * CGo resolve the symbol regardless of header completeness; if the
+//  * system header already declares it the second declaration is a
+//  * no-op (signatures match). */
+// extern int zfs_receive_abort_resumable(libzfs_handle_t *hdl, const char *);
 import "C"
 import (
 	"errors"

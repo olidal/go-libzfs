@@ -403,6 +403,51 @@ func (d *Dataset) Destroy(Defer bool) (err error) {
 	return
 }
 
+// DestroySnaps batch-destroys every snapshot in `names` in a single
+// kernel ioctl (ZFS_IOC_DESTROY_SNAPS). Mirrors zfs(8)'s
+// recursive-destroy fast path: cmd/zfs/zfs_main.c builds an nvlist
+// of snapshot full names and calls zfs_destroy_snaps_nvl, which
+// sends the whole batch to the kernel in one transaction.
+//
+// vs. looping `Destroy` per snapshot:
+//   - 1 ioctl total instead of N (10k snaps: hours → seconds)
+//   - kernel sees the full set atomically — partial failure is
+//     all-or-nothing rather than "destroyed half before hitting
+//     a held snap"
+//
+// names must be FULL snapshot paths ("pool/foo/bar@snap1"). Empty
+// slice is a no-op. `defer` corresponds to `zfs destroy -d`:
+// snapshots with active holds get scheduled for destruction at
+// last-hold-release rather than erroring out the whole batch.
+//
+// Returns nil on success or LastError() on libzfs failure. The
+// kernel-returned error nvlist (which would let us report which
+// individual snap failed) isn't surfaced yet — Phase 4 follow-up.
+func DestroySnaps(names []string, deferDestroy bool) error {
+	if len(names) == 0 {
+		return nil
+	}
+	Global.Mtx.Lock()
+	defer Global.Mtx.Unlock()
+	list := C.new_property_nvlist()
+	if list == nil {
+		return fmt.Errorf("DestroySnaps: nvlist_alloc failed")
+	}
+	defer C.nvlist_free_go(list)
+	for _, n := range names {
+		cn := C.CString(n)
+		rc := C.snap_nvlist_add(list, cn)
+		C.free(unsafe.Pointer(cn))
+		if rc != 0 {
+			return fmt.Errorf("DestroySnaps: nvlist_add %q: rc=%d", n, int(rc))
+		}
+	}
+	if rc := C.dataset_destroy_snaps_nvl(list, booleanT(deferDestroy)); rc != 0 {
+		return LastError()
+	}
+	return nil
+}
+
 // IsSnapshot - retrun true if datset is snapshot
 func (d *Dataset) IsSnapshot() (ok bool) {
 	path := d.Properties[DatasetPropName].Value

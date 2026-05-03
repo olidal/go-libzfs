@@ -141,6 +141,24 @@ int dataset_type(dataset_list_ptr dataset);
 dataset_list_ptr dataset_open(const char *path);
 int dataset_create(const char *path, zfs_type_t type, nvlist_ptr props);
 int dataset_destroy(dataset_list_ptr dataset, boolean_t defer);
+
+/* dataset_destroy_snaps_nvl wraps libzfs's zfs_destroy_snaps_nvl
+ * which sends the whole snapshot list to the kernel in a single
+ * ZFS_IOC_DESTROY_SNAPS ioctl. Atomic — either the kernel destroys
+ * every snap in `snaps` (the boolean-keyed nvlist built by
+ * snap_nvlist_add) or it rejects the batch entirely.
+ *
+ * This mirrors zfs(8)'s implementation of `zfs destroy -r <fs>`
+ * (cmd/zfs/zfs_main.c → destroy_callback → zfs_destroy_snaps_nvl)
+ * which is dramatically faster than the per-snapshot loop go-libzfs's
+ * Dataset.DestroyRecursive currently does (one ioctl per snap, vs.
+ * one ioctl total). On a backup-grade dataset with 10k+ snapshots
+ * the difference is hours vs. seconds.
+ *
+ * `defer` corresponds to the -d flag: when true, snapshots with
+ * active holds are scheduled for destruction once the last hold
+ * releases instead of erroring out. */
+int dataset_destroy_snaps_nvl(nvlist_ptr snaps, boolean_t defer);
 zpool_list_ptr dataset_get_pool(dataset_list_ptr dataset);
 int dataset_prop_set(dataset_list_ptr dataset, zfs_prop_t prop, const char *value);
 int dataset_user_prop_set(dataset_list_ptr dataset, const char *prop, const char *value);

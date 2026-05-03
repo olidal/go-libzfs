@@ -78,6 +78,25 @@ int property_nvlist_add_exclude(nvlist_ptr list, const char *prop) {
 	return nvlist_add_boolean(list, prop);
 }
 
+/* snap_nvlist_add appends a snapshot's full name as a boolean nvpair
+ * to the destroy-snaps batch nvlist. zfs_destroy_snaps_nvl ignores
+ * the value side and treats every boolean entry as "destroy this
+ * snapshot in the same kernel transaction", matching zfs(8)'s
+ * recursive-destroy implementation in cmd/zfs/zfs_iter.c +
+ * lib/libzfs/libzfs_dataset.c. */
+int snap_nvlist_add(nvlist_ptr list, const char *snap) {
+	return nvlist_add_boolean(list, snap);
+}
+
+/* nvlist_free_go is a thin wrapper so Go callers can release the
+ * nvlist they built via new_property_nvlist without importing
+ * sys/nvpair.h. Identical semantics to libnvpair's nvlist_free. */
+void nvlist_free_go(nvlist_ptr list) {
+	if (list != NULL) {
+		nvlist_free(list);
+	}
+}
+
 /* new_libzfs_handle allocates a fresh libzfs handle, distinct from
  * the package-global libzfsHandle. Daemons that serve concurrent
  * operations should pair each long-running call (notably zfs_receive)

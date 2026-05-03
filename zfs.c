@@ -151,6 +151,10 @@ int dataset_destroy(dataset_list_ptr dataset, boolean_t defer) {
 	return zfs_destroy(dataset->zh, defer);
 }
 
+int dataset_destroy_snaps_nvl(nvlist_ptr snaps, boolean_t defer) {
+	return zfs_destroy_snaps_nvl(libzfsHandle, snaps, defer);
+}
+
 dataset_list_t *dataset_list_children(dataset_list_t *dataset) {
 	int err = 0;
 	dataset_list_t *zlist = create_dataset_list_item();

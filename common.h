@@ -51,6 +51,19 @@ nvlist_ptr new_property_nvlist();
 int property_nvlist_add(nvlist_ptr ptr, const char* prop, const char *value);
 int property_nvlist_add_exclude(nvlist_ptr ptr, const char *prop);
 
+/* snap_nvlist_add appends a snapshot name as a boolean nvpair —
+ * the input shape zfs_destroy_snaps_nvl wants. Each call adds one
+ * snap to the batch; the value is implicit (presence-as-true).
+ * The caller frees the nvlist via nvlist_free after the
+ * destroy ioctl returns. */
+int snap_nvlist_add(nvlist_ptr list, const char *snap);
+
+/* nvlist_free wraps the libnvpair function so Go callers don't
+ * need to import its header directly. Pairs with new_property_nvlist
+ * for callers that want to free the list explicitly rather than
+ * leak it into a defer chain. */
+void nvlist_free_go(nvlist_ptr list);
+
 libzfs_handle_ptr new_libzfs_handle();
 void free_libzfs_handle(libzfs_handle_ptr h);
 const char *libzfs_handle_error_str(libzfs_handle_ptr h);

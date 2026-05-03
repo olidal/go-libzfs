@@ -136,6 +136,25 @@ dataset_list_t *dataset_next(dataset_list_t *dataset);
  * callback, which propagates up through here.
  */
 int dataset_iter_children_go(dataset_list_ptr parent, uintptr_t go_handle);
+
+/* dataset_iter_filesystems_go: type-narrow streaming iterator over
+ * filesystem and volume children only. Mirrors zfs_iter_filesystems,
+ * which zfs(8)'s `zfs list` uses to recurse into the FS/volume tree
+ * without ever opening snapshot or bookmark handles. Snapshots-rich
+ * pools see O(filesystems) handle opens here instead of O(filesystems
+ * + snapshots) — the difference is what makes default `zfs list`
+ * cheap on backup-grade datasets. */
+int dataset_iter_filesystems_go(dataset_list_ptr parent, uintptr_t go_handle);
+
+/* dataset_iter_snapshots_sorted_go: streams snapshots of a single
+ * filesystem/volume parent in CREATETXG order via libzfs's internal
+ * AVL sort. This is the order zfs(8)'s `zfs list` AVL emits snapshots
+ * grouped under a parent (zfs_compare collapses to createtxg when both
+ * sides share the same dataset prefix). Memory peak is O(snapshot-
+ * count-under-parent) — the AVL holds them all simultaneously to do
+ * the sort. Bounded per-parent and matches what zfs(8) tolerates. */
+int dataset_iter_snapshots_sorted_go(dataset_list_ptr parent, uintptr_t go_handle);
+
 int dataset_type(dataset_list_ptr dataset);
 
 dataset_list_ptr dataset_open(const char *path);

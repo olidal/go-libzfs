@@ -114,6 +114,50 @@ int dataset_iter_children_go(dataset_list_ptr parent, uintptr_t go_handle) {
 	return rc;
 }
 
+/* dataset_iter_filesystems_go and dataset_iter_snapshots_sorted_go
+ * mirror dataset_iter_children_go but invoke the type-narrow libzfs
+ * iterators. Reusing go_iter_children_bridge is safe because all
+ * three libzfs entry points expect the same zfs_iter_f signature
+ * (int (*)(zfs_handle_t *, void *)) and the bridge's job is just
+ * "wrap zhp in a transient dataset_list_t, call Go, free the
+ * wrapper". Same SIGURG-block rationale as iter_children. */
+int dataset_iter_filesystems_go(dataset_list_ptr parent, uintptr_t go_handle) {
+	if (parent == NULL || parent->zh == NULL) {
+		return -1;
+	}
+	sigset_t block_mask, old_mask;
+	sigemptyset(&block_mask);
+	sigaddset(&block_mask, SIGURG);
+	pthread_sigmask(SIG_BLOCK, &block_mask, &old_mask);
+
+	int rc = zfs_iter_filesystems(parent->zh, go_iter_children_bridge, (void *)go_handle);
+
+	pthread_sigmask(SIG_SETMASK, &old_mask, NULL);
+	return rc;
+}
+
+/* zfs_iter_snapshots_sorted walks snapshots in CREATETXG order — the
+ * same order zfs(8)'s `zfs list` AVL produces for snaps grouped under
+ * a single parent dataset. The libzfs implementation builds an
+ * internal AVL keyed on createtxg, so this call's memory peak is
+ * O(snapshot-count-under-parent) rather than O(1). That's the same
+ * peak zfs(8) tolerates and is bounded per-parent — typical snapshot
+ * counts in our backup-grade pools are a few thousand max. */
+int dataset_iter_snapshots_sorted_go(dataset_list_ptr parent, uintptr_t go_handle) {
+	if (parent == NULL || parent->zh == NULL) {
+		return -1;
+	}
+	sigset_t block_mask, old_mask;
+	sigemptyset(&block_mask);
+	sigaddset(&block_mask, SIGURG);
+	pthread_sigmask(SIG_BLOCK, &block_mask, &old_mask);
+
+	int rc = zfs_iter_snapshots_sorted(parent->zh, go_iter_children_bridge, (void *)go_handle, 0, 0);
+
+	pthread_sigmask(SIG_SETMASK, &old_mask, NULL);
+	return rc;
+}
+
 dataset_list_ptr dataset_list_root() {
 	int err = 0;
 	dataset_list_t *zlist = create_dataset_list_item();

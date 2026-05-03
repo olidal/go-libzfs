@@ -185,6 +185,66 @@ func (d *Dataset) IterChildren(visit func(*Dataset) error) error {
 	return nil
 }
 
+// IterFilesystems walks the immediate filesystem and volume children
+// of d via libzfs's zfs_iter_filesystems, calling visit for each.
+// Same streaming + memory shape as IterChildren, but skips snapshot
+// and bookmark children entirely — zfs_iter_filesystems opens only
+// FS/volume handles, never snapshots. This is the primitive zfs(8)'s
+// `zfs list` uses to recurse into the dataset tree without paying
+// for snapshot opens on snapshot-rich pools.
+//
+// Same Dataset-lifetime contract as IterChildren: the handle passed
+// to visit is alive for the duration of the callback only; its
+// closeOnce is pre-tripped so calling .Close() inside visit is a
+// safe no-op. Returning a non-nil error aborts iteration.
+func (d *Dataset) IterFilesystems(visit func(*Dataset) error) error {
+	if d.list == nil {
+		return errors.New(msgDatasetIsNil)
+	}
+	state := &iterChildrenState{visit: visit}
+	h := cgo.NewHandle(state)
+	defer h.Delete()
+	rc := C.dataset_iter_filesystems_go(d.list, C.uintptr_t(h))
+	if state.callbackErr != nil {
+		return state.callbackErr
+	}
+	if rc != 0 {
+		return LastError()
+	}
+	return nil
+}
+
+// IterSnapshotsSorted walks the immediate snapshot children of d in
+// CREATETXG order via libzfs's zfs_iter_snapshots_sorted, calling
+// visit for each. This is the order zfs(8) emits snapshots grouped
+// under a single parent dataset (zfs_compare's same-prefix branch
+// collapses to createtxg ordering).
+//
+// Memory shape differs from IterChildren / IterFilesystems: libzfs
+// builds an internal AVL of the parent's snapshots to do the sort,
+// so peak is O(snapshot-count-under-parent), not O(1). Per-parent
+// bounded; on the backup-grade pools where this matters the per-
+// parent snapshot count is at most a few thousand, which is the same
+// peak zfs(8) tolerates.
+//
+// Same Dataset-lifetime contract as IterChildren / IterFilesystems.
+func (d *Dataset) IterSnapshotsSorted(visit func(*Dataset) error) error {
+	if d.list == nil {
+		return errors.New(msgDatasetIsNil)
+	}
+	state := &iterChildrenState{visit: visit}
+	h := cgo.NewHandle(state)
+	defer h.Delete()
+	rc := C.dataset_iter_snapshots_sorted_go(d.list, C.uintptr_t(h))
+	if state.callbackErr != nil {
+		return state.callbackErr
+	}
+	if rc != 0 {
+		return LastError()
+	}
+	return nil
+}
+
 // goDatasetIterChildrenCallback is the Go-side endpoint of the C
 // trampoline go_iter_children_bridge. Wraps the freshly-iterated
 // child handle in a transient Dataset, invokes the user's visit
@@ -193,6 +253,10 @@ func (d *Dataset) IterChildren(visit func(*Dataset) error) error {
 // The closeOnce on the wrapper is pre-tripped so that an accidental
 // Close() inside visit is a safe no-op — the C bridge always owns
 // the handle's teardown immediately after we return.
+//
+// Shared by IterChildren, IterFilesystems, and IterSnapshotsSorted —
+// all three libzfs entry points use the same zfs_iter_f signature
+// and the same wrap-call-free trampoline.
 //
 //export goDatasetIterChildrenCallback
 func goDatasetIterChildrenCallback(child C.dataset_list_ptr, hID C.uintptr_t) C.int {

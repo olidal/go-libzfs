@@ -124,6 +124,15 @@ const char *libzfs_handle_error_str(libzfs_handle_ptr h) {
 	return libzfs_error_description(h);
 }
 
+/* libzfs_handle_set_printerr toggles per-handle "print errors to
+ * stderr" mode. zfs(8) enables this on its g_zfs handle so libzfs
+ * functions like zfs_setprop_error fprintf their formatted error
+ * directly. We use it on the bulk v2 recv path to surface per-
+ * property kernel-rejection messages — same shape zfs(8) prints. */
+void libzfs_handle_set_printerr(libzfs_handle_ptr h, boolean_t enable) {
+	libzfs_print_on_error(h, enable);
+}
+
 int redirect_libzfs_stdout(int to) {
 	int save, res;
 	save = dup(STDOUT_FILENO);

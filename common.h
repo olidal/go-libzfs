@@ -68,6 +68,15 @@ libzfs_handle_ptr new_libzfs_handle();
 void free_libzfs_handle(libzfs_handle_ptr h);
 const char *libzfs_handle_error_str(libzfs_handle_ptr h);
 
+/* libzfs_handle_set_printerr enables or disables libzfs's auto-print
+ * of error messages to stderr on this handle. With print_on_error
+ * enabled, libzfs's recv loop prints "cannot receive <prop> property
+ * on <ds>: <reason>" lines for each kernel-rejected cmdprop directly
+ * to fd 2 (the same path zfs(8) uses by default). Pair with the
+ * existing redirect_libzfs_stderr to route those lines to a SCM-
+ * passed stderr fd for the bulk v2 recv path. */
+void libzfs_handle_set_printerr(libzfs_handle_ptr h, boolean_t enable);
+
 int redirect_libzfs_stdout(int to);
 int restore_libzfs_stdout(int saved);
 int redirect_libzfs_stderr(int to);

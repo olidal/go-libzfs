@@ -408,6 +408,27 @@ func (lh *LibzfsHandle) LastError() error {
 	return errors.New(C.GoString(C.libzfs_handle_error_str(lh.h)))
 }
 
+// SetPrintOnError toggles libzfs's auto-print of error messages to
+// stderr on this handle. zfs(8) enables this on its g_zfs handle so
+// internal helpers like zfs_setprop_error fprintf their formatted
+// error directly to fd 2 — that's where "cannot receive <prop>
+// property on <ds>: <reason>" originates during a recv with
+// kernel-denied cmdprops. Pair with redirect_libzfs_stderr (also
+// exposed in this package) to route the lines to a SCM-passed
+// stderr fd rather than the worker's own fd 2.
+//
+// No-op on a nil/closed handle.
+func (lh *LibzfsHandle) SetPrintOnError(enable bool) {
+	if lh == nil || lh.h == nil {
+		return
+	}
+	var v C.boolean_t
+	if enable {
+		v = 1
+	}
+	C.libzfs_handle_set_printerr(lh.h, v)
+}
+
 // ReceiveStreamToWithPropsHandle is identical to ReceiveStreamToWithProps
 // but uses the caller-supplied LibzfsHandle instead of the package
 // global. This isolates each receive's userspace libzfs state, matching

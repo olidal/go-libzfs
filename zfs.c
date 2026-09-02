@@ -402,17 +402,5 @@ recvflags_t *alloc_recvflags() {
 	return r;
 }
 
-struct zfs_cmd *new_zfs_cmd(){
-	struct zfs_cmd *cmd = malloc(sizeof(struct zfs_cmd));
-	memset(cmd, 0, sizeof(struct zfs_cmd));
-	return cmd;
-}
 
-int estimate_send_size(struct zfs_cmd *zc) {
-	int rc = zfs_ioctl(libzfsHandle, ZFS_IOC_SEND, zc);
-	if (rc != 0) {
-		rc = errno;
-	}
-	return rc;
-}
 

@@ -13,13 +13,6 @@ int go_libzfs_init() {
 	return 0;
 }
 
-int go_libpc_init(libpc_handle_t *lpch) {
-	lpch->lpc_lib_handle = libzfsHandle;
-	lpch->lpc_ops = &libzfs_config_ops;
-	lpch->lpc_printerr = B_TRUE;
-	return 0;
-}
-
 int libzfs_last_error() {
 	return libzfs_errno(libzfsHandle);
 }

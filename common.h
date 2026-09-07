@@ -18,16 +18,16 @@ typedef struct property_list {
 } property_list_t;
 
 typedef struct libzfs_handle* libzfs_handle_ptr;
-typedef struct libpc_handle* libpc_handle_ptr;
-typedef struct libpc_handle {
-	int lpc_error;
-	boolean_t lpc_printerr;
-	boolean_t lpc_open_access_error;
-	boolean_t lpc_desc_active;
-	char lpc_desc[1024];
-	pool_config_ops_t *lpc_ops;
-	void *lpc_lib_handle;
-} libpc_handle_t;
+/* struct libpc_handle was copied here from libzfs's internals: it is not in
+ * 2.1's public libzutil.h, and the only thing that ever used it was
+ * go_libpc_init(), whose result nothing read -- ExportedPools() passes
+ * libzfsHandle to go_zpool_search_import(), never the handle it had just
+ * initialised. Removed with that helper on 2026-09-07.
+ *
+ * Keeping it was not merely untidy: a private copy of a library struct has to
+ * match the library's layout exactly, and OpenZFS 2.2 made this one public in
+ * libzutil.h, so the copy became a hard redefinition error. Dead code that
+ * pins an ABI is the worst kind. */
 typedef struct nvlist* nvlist_ptr;
 typedef struct property_list *property_list_ptr;
 typedef struct nvpair* nvpair_ptr;
@@ -37,7 +37,6 @@ typedef char* char_ptr;
 extern libzfs_handle_ptr libzfsHandle;
 
 int go_libzfs_init();
-int go_libpc_init(libpc_handle_t *);
 
 int libzfs_last_error();
 const char *libzfs_last_error_str();

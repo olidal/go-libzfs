@@ -101,7 +101,13 @@ type PoolScanStat struct {
 	EndTime   uint64 // Scan end time
 	ToExamine uint64 // Total bytes to scan
 	Examined  uint64 // Total bytes scaned
+	// ToProcess is filled on ZFS 2.1 only: 2.2 removed pss_to_process. Zero
+	// there, never a real "nothing to process" -- see scanstat_zfs2{1,2}.go.
 	ToProcess uint64 // Total bytes to processed
+	// Skipped is filled on ZFS 2.2 only, from the pss_skipped that took
+	// pss_to_process's place in the struct. Zero on 2.1, which has no such
+	// counter. The two are NOT the same quantity despite sharing an offset.
+	Skipped   uint64 // Total bytes skipped by the scanner (2.2+)
 	Processed uint64 // Total bytes processed
 	Errors    uint64 // Scan errors
 	// Values not stored on disk
@@ -226,7 +232,7 @@ func poolGetConfig(name string, nv C.nvlist_ptr) (vdevs VDevTree, err error) {
 		vdevs.ScanStat.EndTime = uint64(ps.pss_end_time)
 		vdevs.ScanStat.ToExamine = uint64(ps.pss_to_examine)
 		vdevs.ScanStat.Examined = uint64(ps.pss_examined)
-		vdevs.ScanStat.ToProcess = uint64(ps.pss_to_process)
+		vdevs.ScanStat.ToProcess, vdevs.ScanStat.Skipped = scanStatProgress(ps)
 		vdevs.ScanStat.Processed = uint64(ps.pss_processed)
 		vdevs.ScanStat.Errors = uint64(ps.pss_errors)
 		vdevs.ScanStat.PassExam = uint64(ps.pss_pass_exam)

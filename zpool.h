@@ -5,6 +5,11 @@
 #ifndef SERVERWARE_ZPOOL_H
 #define SERVERWARE_ZPOOL_H
 
+/* For importargs_t, used by go_search_import_call below. zpool.c already
+ * included it before this header; declaring the helper here means every
+ * includer needs it. */
+#include <libzutil.h>
+
 /* Rewind request information */
 #define	ZPOOL_NO_REWIND		1  /* No policy - default behavior */
 #define	ZPOOL_NEVER_REWIND	2  /* Do not search for best txg or rewind */
@@ -77,6 +82,10 @@ const char *get_zpool_name(nvlist_ptr nv);
 const char *get_zpool_comment(nvlist_ptr nv);
 
 nvlist_ptr get_zpool_vdev_tree(nvlist_ptr nv);
+
+/* Implemented once per ZFS line -- zpool_search_import() lost an argument in
+ * 2.2 -- in zpool_searchimport_zfs2{1,2}.c, selected by the zfs22 build tag. */
+nvlist_ptr go_search_import_call(libzfs_handle_ptr zfsh, importargs_t *idata);
 
 nvlist_ptr go_zpool_search_import(libzfs_handle_ptr zfsh, int paths, char **path, boolean_t do_scan);
 //nvlist_ptr go_zpool_search_import(libpc_handle_t *zfsh, int paths, char **path, boolean_t do_scan);

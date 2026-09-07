@@ -528,7 +528,9 @@ nvlist_ptr go_zpool_search_import(libzfs_handle_ptr zfsh, int paths, char **path
 		return NULL;
 
 	}
-	pools = zpool_search_import(zfsh, &idata, &libzfs_config_ops);
+	/* Per-line: the signature changed in 2.2. See
+	 * zpool_searchimport_zfs21.c / zpool_searchimport_zfs22.c. */
+	pools = go_search_import_call(zfsh, &idata);
 	tpool_wait(t);
 	tpool_destroy(t);
 	nvlist_free(policy);

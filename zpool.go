@@ -575,7 +575,11 @@ func (pool *Pool) ReloadProperties() (err error) {
 		//fmt.Printf("Next value: %v, Next Source: %v, Next Property%v, size=%v\n",
 		//	next.value[0], next.source[0], next.property, len(pool.Properties))
 
-		pool.Properties[next.property] = Property{Value: C.GoString(&(next.value[0])), Source: C.GoString(&(next.source[0]))}
+		// A property this table doesn't know (a newer OpenZFS line) is
+		// skipped rather than indexed past the end.
+		if int(next.property) < len(pool.Properties) {
+			pool.Properties[next.property] = Property{Value: C.GoString(&(next.value[0])), Source: C.GoString(&(next.source[0]))}
+		}
 		next = C.next_property(next)
 	}
 	C.free_properties(propList)

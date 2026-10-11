@@ -258,9 +258,13 @@ property_list_t *read_zpool_properties(zpool_list_ptr pool) {
 	root = read_append_zpool_property(pool, root, ZPOOL_PROP_AUTOTRIM);
 	root = read_append_zpool_property(pool, root, ZPOOL_PROP_COMPATIBILITY);
 
+	// The trailing entry carries the number of properties read above, which
+	// is what Go's PoolNumProps counts. Not ZPOOL_NUM_PROPS: that grows with
+	// the OpenZFS line (33 on 2.1, 36 on 2.2) and would index past the
+	// Properties slice that Go sizes from PoolNumProps.
 	list = new_property_list();
-	list->property = ZPOOL_NUM_PROPS;
-	sprintf(list->value, "%d", ZPOOL_NUM_PROPS);
+	list->property = ZPOOL_PROP_COMPATIBILITY + 1;
+	sprintf(list->value, "%d", ZPOOL_PROP_COMPATIBILITY + 1);
 	list->pnext = root;
 	zprop_source_tostr(list->source, ZPROP_SRC_NONE);
 	root = list;

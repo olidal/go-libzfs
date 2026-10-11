@@ -26,6 +26,15 @@ and the public headers expose no version macro. Checked on 2.1.15-pve1 and
 Only the differing call is per line — `zpool_searchimport_zfs2{1,2}.c` and
 `scanstat_zfs2{1,2}.go`. The surrounding logic stays in one place.
 
+Not differing in source, but in value: the property enums. 2.2 appends
+`bcloneused`, `bclonesaved` and `bcloneratio` to `zpool_prop_t` (33 → 36) and
+`snapshots_changed` and `prefetch` to `zfs_prop_t` (95 → 97); the order of the
+existing entries is unchanged. The Go tables (`PoolNumProps`,
+`DatasetNumProps`) stay at what this wrapper reads, so the new properties are
+not exposed on 2.2. Anything sized from Go but indexed from C must not use
+`ZPOOL_NUM_PROPS` / `ZFS_NUM_PROPS`: `read_zpool_properties` did, and every
+`PoolOpenAll` panicked on 2.2 (*index out of range [36] with length 34*).
+
 `ScanStat` keeps one shape on both lines: `ToProcess` is filled on 2.1 and zero
 on 2.2, `Skipped` the reverse. Neither is a real zero — the other line simply
 has no such counter.
